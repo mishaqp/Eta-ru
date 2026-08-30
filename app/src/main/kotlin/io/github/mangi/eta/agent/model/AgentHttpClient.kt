@@ -19,6 +19,7 @@ internal object AgentHttpClient {
     private const val CONNECT_TIMEOUT_MS = 15_000L
     private const val READ_TIMEOUT_MS = 60_000L
     private const val WRITE_TIMEOUT_MS = 30_000L
+    private const val CODEX_CLIENT_VERSION = "0.151.0"
 
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -31,14 +32,26 @@ internal object AgentHttpClient {
                     original.method == "GET" &&
                     original.url.encodedPath == "/backend-api/codex/models"
 
-                val request = if (isCodexModels && original.header("Authorization") == null) {
-                    CodexAccountRepository.firstEnabledAccount()?.let { account ->
-                        original.newBuilder()
-                            .header("Authorization", "Bearer ${account.accessToken}")
-                            .header("ChatGPT-Account-ID", account.chatgptAccountId)
-                            .header("originator", "codex_cli_rs")
-                            .build()
-                    } ?: original
+                val request = if (isCodexModels) {
+                    val builder = original.newBuilder()
+                    if ("client_version" !in original.url.queryParameterNames) {
+                        builder.url(
+                            original.url.newBuilder()
+                                .addQueryParameter("client_version", CODEX_CLIENT_VERSION)
+                                .build(),
+                        )
+                    }
+                    if (original.header("Authorization") == null) {
+                        CodexAccountRepository.firstEnabledAccount()?.let { account ->
+                            builder
+                                .header("Authorization", "Bearer ${account.accessToken}")
+                                .header("ChatGPT-Account-ID", account.chatgptAccountId)
+                        }
+                    }
+                    if (original.header("originator") == null) {
+                        builder.header("originator", "codex_cli_rs")
+                    }
+                    builder.build()
                 } else {
                     original
                 }
