@@ -51,7 +51,7 @@ jobs:
           gh api \
             -H "Accept: application/vnd.github+json" \
             "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${KEY_ARTIFACT_ID}/zip" \
-            --output "$archive"
+            > "$archive"
           unzip -o -j "$archive" -d "$RUNNER_TEMP/signing"
           test -s "$RUNNER_TEMP/signing/eta-release.jks"
           test -s "$RUNNER_TEMP/signing/credentials.txt"
