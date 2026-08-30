@@ -11,5 +11,7 @@
   <string name="terminal_working">Выполнение…</string>
   <string name="terminal_login_hint">Подготовить вход в Codex</string>
   <string name="terminal_close_session">Закрыть сессию</string>
+  <string name="terminal_refresh">Обновить вывод</string>
+  <string name="terminal_session_ready">Сессия готова</string>
   <string name="terminal_output">Вывод</string>
 </resources>
