@@ -1,6 +1,12 @@
 name: Generate Russian Android localization
 
 on:
+  push:
+    branches:
+      - feat/russian-localization
+    paths:
+      - app/src/main/res/values-b+zh+Hans/strings.xml
+      - .github/workflows/generate-russian-localization.yml
   workflow_dispatch:
 
 permissions:
@@ -55,16 +61,16 @@ jobs:
 
           tree = ET.parse(source)
           root = tree.getroot()
-          total = 0
+          translated_count = 0
           for element in root.iter():
               if element.text:
                   element.text = translate(element.text)
-                  total += 1
+                  translated_count += 1
               if element.tail and element.tail.strip():
                   element.tail = translate(element.tail)
           os.makedirs(os.path.dirname(target), exist_ok=True)
           tree.write(target, encoding='utf-8', xml_declaration=True)
-          print(f'Translated {total} XML text nodes into {target}')
+          print(f'Translated {translated_count} XML text nodes into {target}')
           PY
 
       - name: Commit localization
