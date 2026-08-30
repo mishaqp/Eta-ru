@@ -11,98 +11,77 @@ on:
 
 permissions:
   contents: write
-  models: read
 
 jobs:
   translate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
 
-      - name: Generate values-ru strings with GitHub Models
+      - name: Install offline translation engine
+        run: python3 -m pip install --disable-pip-version-check argostranslate
+
+      - name: Generate values-ru strings offline
         env:
           SOURCE: app/src/main/res/values-b+zh+Hans/strings.xml
           TARGET: app/src/main/res/values-ru/strings.xml
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 - <<'PY'
-          import json, os, re, time, urllib.request
+          import os, re
           import xml.etree.ElementTree as ET
+          import argostranslate.package
+          import argostranslate.translate
 
           source, target = os.environ['SOURCE'], os.environ['TARGET']
-          token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
           chinese_re = re.compile(r'[\u3400-\u9fff]')
+          token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
+
+          def install_pair(source_code, target_code):
+              installed = argostranslate.translate.get_installed_languages()
+              if any(language.code == source_code and any(to.code == target_code for to in language.translations) for language in installed):
+                  return
+              packages = argostranslate.package.get_available_packages()
+              package = next((item for item in packages if item.from_code == source_code and item.to_code == target_code), None)
+              if package is None:
+                  raise RuntimeError(f'Argos package {source_code}->{target_code} is unavailable')
+              argostranslate.package.install_from_path(package.download())
+
+          argostranslate.package.update_package_index()
+          try:
+              install_pair('zh', 'ru')
+          except RuntimeError:
+              # Argos can transparently use the installed English pivot.
+              install_pair('zh', 'en')
+              install_pair('en', 'ru')
 
           def mask(text):
               values = []
               def replace(match):
                   values.append(match.group(0))
-                  return f'ZXQPLACEHOLDER{len(values)-1}QXZ'
+                  return f'__ETA_PH_{len(values)-1}__'
               return token_re.sub(replace, text), values
 
           def restore(text, values):
               for index, value in enumerate(values):
-                  text = text.replace(f'ZXQPLACEHOLDER{index}QXZ', value)
+                  token = f'__ETA_PH_{index}__'
+                  text = text.replace(token, value)
               return text
-
-          def translate_batch(texts):
-              payload = {
-                  'model': 'openai/gpt-4.1-mini',
-                  'temperature': 0,
-                  'max_tokens': 3000,
-                  'response_format': {'type': 'json_object'},
-                  'messages': [
-                      {'role': 'system', 'content': 'You are a professional Android UI localizer. Translate Simplified Chinese to natural Russian. Preserve all tokens like ZXQPLACEHOLDER0QXZ exactly. Preserve product names, code, paths, acronyms, XML-like text and Markdown. Return only valid JSON.'},
-                      {'role': 'user', 'content': 'Translate every value in this JSON object into Russian. Keep the same keys and return an object of string values only.\n' + json.dumps(texts, ensure_ascii=False)}
-                  ]
-              }
-              request = urllib.request.Request(
-                  'https://models.github.ai/inference/chat/completions',
-                  data=json.dumps(payload).encode('utf-8'),
-                  headers={'Authorization': 'Bearer ' + os.environ['GITHUB_TOKEN'], 'Content-Type': 'application/json'}
-              )
-              for attempt in range(5):
-                  try:
-                      with urllib.request.urlopen(request, timeout=90) as response:
-                          body = json.loads(response.read().decode('utf-8'))
-                      content = body['choices'][0]['message']['content']
-                      if content.startswith('```'):
-                          content = content.split('\n', 1)[1].rsplit('```', 1)[0]
-                      result = json.loads(content)
-                      if set(result) != set(texts) or not all(isinstance(value, str) for value in result.values()):
-                          raise RuntimeError('Model returned an incomplete translation map')
-                      return result
-                  except Exception:
-                      if attempt == 4:
-                          raise
-                      time.sleep(5 * (attempt + 1))
 
           tree = ET.parse(source)
           root = tree.getroot()
-          elements = [element for element in root.iter() if element.text and chinese_re.search(element.text)]
-          unique = list(dict.fromkeys(element.text for element in elements))
-          translations, batches, current, current_size = {}, [], {}, 0
-          for index, original in enumerate(unique):
+          elements = [item for item in root.iter() if item.text and chinese_re.search(item.text)]
+          translations = {}
+          for number, original in enumerate(dict.fromkeys(item.text for item in elements), 1):
               masked, tokens = mask(original)
-              if current and current_size + len(masked) > 1800:
-                  batches.append(current); current, current_size = {}, 0
-              current[str(index)] = [original, masked, tokens]
-              current_size += len(masked)
-          if current:
-              batches.append(current)
+              translations[original] = restore(argostranslate.translate.translate(masked, 'zh', 'ru'), tokens)
+              if number % 50 == 0:
+                  print(f'Translated {number} unique strings')
 
-          for number, batch in enumerate(batches, 1):
-              request_map = {key: value[1] for key, value in batch.items()}
-              response_map = translate_batch(request_map)
-              for key, (original, _masked, tokens) in batch.items():
-                  translations[original] = restore(response_map[key], tokens)
-              print(f'Completed batch {number}/{len(batches)}')
-              time.sleep(1)
-
-          for element in elements:
-              element.text = translations[element.text]
+          for item in elements:
+              item.text = translations[item.text]
           os.makedirs(os.path.dirname(target), exist_ok=True)
           tree.write(target, encoding='utf-8', xml_declaration=True)
           print(f'Generated {target}: {len(elements)} translated strings')
