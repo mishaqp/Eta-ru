@@ -48,16 +48,32 @@ jobs:
               raise RuntimeError('Argos English-to-Russian model is unavailable')
           argostranslate.package.install_from_path(package.download())
 
+          def protect_placeholders(text):
+              tokens = []
+              def replace(match):
+                  index = len(tokens)
+                  tokens.append(match.group(0))
+                  return str(9876543200 + index)
+              return placeholder_re.sub(replace, text), tokens
+
+          def restore_placeholders(text, tokens):
+              for index, token in enumerate(tokens):
+                  marker = str(9876543200 + index)
+                  if marker not in text:
+                      raise RuntimeError(f'Translation lost protected marker {marker}: {text!r}')
+                  text = text.replace(marker, token, 1)
+              return text
+
           tree = ET.parse(source)
           root = tree.getroot()
           elements = [item for item in root.iter() if item.text and latin_re.search(item.text)]
           translations = {}
           for number, original in enumerate(dict.fromkeys(item.text for item in elements), 1):
-              translated = argostranslate.translate.translate(original, 'en', 'ru')
-              original_tokens = placeholder_re.findall(original)
-              missing = [token for token in original_tokens if token not in translated]
-              if missing:
-                  raise RuntimeError(f'Android placeholders changed in: {original!r}; missing {missing}')
+              protected, tokens = protect_placeholders(original)
+              translated = argostranslate.translate.translate(protected, 'en', 'ru')
+              translated = restore_placeholders(translated, tokens)
+              if placeholder_re.findall(original) != placeholder_re.findall(translated):
+                  raise RuntimeError(f'Android placeholder validation failed: {original!r} -> {translated!r}')
               translations[original] = translated
               if number % 50 == 0:
                   print(f'Translated {number} unique strings')
