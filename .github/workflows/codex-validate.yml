@@ -45,4 +45,9 @@ jobs:
         run: ./gradlew --no-daemon --no-configuration-cache :app:compileDebugKotlin
 
       - name: Run targeted agent regression tests
-        run: ./gradlew --no-daemon --no-configuration-cache :app:testDebugUnitTest --tests io.github.mangi.eta.ui.model.AgentModelPickerProjectorTest --tests io.github.mangi.eta.agent.runtime.AgentInterruptedProgressStoreTest
+        run: >-
+          ./gradlew --no-daemon --no-configuration-cache :app:testDebugUnitTest
+          --tests io.github.mangi.eta.ui.model.AgentModelPickerProjectorTest
+          --tests io.github.mangi.eta.agent.runtime.AgentInterruptedProgressStoreTest
+          --tests io.github.mangi.eta.ui.app.AgentRuntimeTraceLocalizationTest
+          --tests io.github.mangi.eta.agent.model.OpenAiRequestMessagesTest
