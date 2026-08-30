@@ -1,0 +1,38 @@
+name: Validate Russian localization
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Russian resource coverage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          def resources(path):
+              root = ET.parse(path).getroot()
+              return {item.attrib['name'] for item in root if 'name' in item.attrib}
+
+          source = resources('app/src/main/res/values/strings.xml')
+          russian = set()
+          duplicates = set()
+          for path in Path('app/src/main/res/values-ru').glob('*.xml'):
+              names = resources(path)
+              duplicates.update(russian & names)
+              russian.update(names)
+          missing = sorted(source - russian)
+          extra = sorted(russian - source)
+          print(f'English: {len(source)}; Russian: {len(russian)}')
+          if duplicates:
+              raise SystemExit('Duplicate Russian resources: ' + ', '.join(sorted(duplicates)))
+          if missing:
+              raise SystemExit('Missing Russian resources: ' + ', '.join(missing))
+          if extra:
+              raise SystemExit('Unknown Russian resources: ' + ', '.join(extra))
+          print('Russian localization coverage is complete.')
+          PY
