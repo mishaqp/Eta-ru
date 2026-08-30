@@ -3,18 +3,20 @@ package io.github.mangi.eta.agent.terminal
 import android.content.Context
 import java.io.File
 
-/** Eta 管理的 Linux 工具环境路径；内部历史包名不参与对外展示。 */
+/** Eta-managed Linux tool environment paths. */
 internal object AlpineEnvironmentPaths {
     const val READY_MARKER = ".eta-environment-ready"
     const val COMMON_TOOLS_MARKER = ".eta-common-tools-ready"
     const val APK_ANALYSIS_MARKER = ".eta-apk-analysis-ready"
     const val PYTHON_TOOLS_MARKER = ".eta-python-tools-ready"
     const val NODE_TOOLS_MARKER = ".eta-node-tools-ready"
+    const val CODEX_TOOLS_MARKER = ".eta-codex-tools-ready"
     const val SSH_TOOLS_MARKER = ".eta-ssh-tools-ready"
     const val TOOLSET_REVISION = 3
     const val APK_ANALYSIS_REVISION = 1
     const val PYTHON_TOOLS_REVISION = 1
     const val NODE_TOOLS_REVISION = 1
+    const val CODEX_TOOLS_REVISION = 1
     const val SSH_TOOLS_REVISION = 1
 
     fun environmentDir(context: Context): File =
@@ -32,7 +34,7 @@ internal object AlpineEnvironmentPaths {
     fun rootfsReady(rootfsPath: String?): Boolean {
         if (rootfsPath.isNullOrBlank()) return false
         val rootfs = File(rootfsPath)
-        // Alpine 的 /bin/sh 是指向 /bin/busybox 的绝对链接，从 chroot 外检查会落到 Android /bin。
+        // Alpine /bin/sh is an absolute link to /bin/busybox; inspect busybox itself outside chroot.
         return File(rootfs, READY_MARKER).isFile && File(rootfs, "bin/busybox").isFile
     }
 
@@ -57,7 +59,6 @@ internal object AlpineEnvironmentPaths {
             }
         }.getOrDefault(false)
         if (markerReady) return true
-        // 旧版本把部分工具捆进基础包且无独立 marker，用二进制存在性识别旧安装。
         return profile.legacyBinaries.isNotEmpty() &&
             profile.legacyBinaries.all { path -> File(rootfs, path).isFile }
     }
