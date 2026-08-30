@@ -1,0 +1,88 @@
+name: Codex signed release APK
+
+on:
+  push:
+    branches:
+      - build/codex-release-once
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: codex-release-once-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build signed Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-provider: basic
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: ""
+          log-accepted-android-sdk-licenses: false
+
+      - name: Install Android SDK 37
+        run: sdkmanager --channel=3 "platforms;android-37.0"
+
+      - name: Restore persistent signing key
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY_ARTIFACT_ID: "9729532144"
+        run: |
+          archive="$RUNNER_TEMP/signing-key.zip"
+          mkdir -p "$RUNNER_TEMP/signing"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${KEY_ARTIFACT_ID}/zip" \
+            > "$archive"
+          unzip -o -j "$archive" -d "$RUNNER_TEMP/signing"
+          test -s "$RUNNER_TEMP/signing/eta-release.jks"
+          test -s "$RUNNER_TEMP/signing/credentials.txt"
+
+      - name: Build one signed Release APK
+        env:
+          ETA_RELEASE_STORE_FILE: ${{ runner.temp }}/signing/eta-release.jks
+          ETA_RELEASE_KEY_ALIAS: eta-ru-release
+        run: |
+          set -a
+          source "$RUNNER_TEMP/signing/credentials.txt"
+          set +a
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease
+
+      - name: Verify and prepare APK
+        id: apk
+        run: |
+          apk="app/build/outputs/apk/release/app-release.apk"
+          signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -f "$apk"
+          "$signer" verify "$apk"
+          mkdir -p "$RUNNER_TEMP/apk"
+          cp "$apk" "$RUNNER_TEMP/apk/eta-ru-arm64-v8a-release.apk"
+          echo "path=$RUNNER_TEMP/apk/eta-ru-arm64-v8a-release.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload one Release APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: eta-ru-arm64-v8a-release
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 30
