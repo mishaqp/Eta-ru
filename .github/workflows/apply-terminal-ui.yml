@@ -1,0 +1,275 @@
+name: Add interactive terminal UI
+
+on:
+  push:
+    branches:
+      - feat/codex-cli-oauth
+    paths:
+      - .github/workflows/apply-terminal-ui.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Add terminal route and screen
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          route = Path('app/src/main/kotlin/io/github/mangi/eta/ui/navigation/AppRoute.kt')
+          text = route.read_text()
+          if 'data object Terminal' not in text:
+              text = text.replace(
+                  '    data object LinuxEnvironment : AppRoute\n',
+                  '    data object LinuxEnvironment : AppRoute\n\n    @Serializable\n    data object Terminal : AppRoute\n',
+              )
+              route.write_text(text)
+
+          root = Path('app/src/main/kotlin/io/github/mangi/eta/ui/app/AgentAppRoot.kt')
+          text = root.read_text()
+          if 'ui.screens.terminal.TerminalScreen' not in text:
+              text = text.replace(
+                  'import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen\n',
+                  'import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen\nimport io.github.mangi.eta.ui.screens.terminal.TerminalScreen\n',
+              )
+          text = text.replace(
+              '''                LinuxEnvironmentScreen(\n                    context = context,\n                    onBack = ::popRoute,\n                )''',
+              '''                LinuxEnvironmentScreen(\n                    context = context,\n                    onBack = ::popRoute,\n                    onOpenTerminal = { pushRoute(AppRoute.Terminal) },\n                )''',
+          )
+          if 'entry<AppRoute.Terminal>' not in text:
+              marker = '            entry<AppRoute.ModelProviders>(swipeDismiss = swipeDismiss) {'
+              entry = '''            entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {\n                TerminalScreen(\n                    context = context,\n                    onBack = ::popRoute,\n                )\n            }\n'''
+              text = text.replace(marker, entry + marker)
+          root.write_text(text)
+
+          linux = Path('app/src/main/kotlin/io/github/mangi/eta/ui/screens/terminal/LinuxEnvironmentScreen.kt')
+          text = linux.read_text()
+          text = text.replace(
+              '''internal fun LinuxEnvironmentScreen(\n    context: Context,\n    onBack: () -> Unit,\n)''',
+              '''internal fun LinuxEnvironmentScreen(\n    context: Context,\n    onBack: () -> Unit,\n    onOpenTerminal: () -> Unit,\n)''',
+          )
+          if 'key = "terminal-entry-card"' not in text:
+              marker = '''    ) {\n        item(key = "status-title")'''
+              card = '''    ) {\n        item(key = "terminal-entry-card") {\n            Card(\n                modifier = Modifier\n                    .padding(horizontal = 12.dp)\n                    .padding(bottom = 12.dp),\n            ) {\n                BasicComponent(\n                    title = stringResource(R.string.terminal_title),\n                    summary = stringResource(R.string.terminal_summary),\n                    endActions = {\n                        TextButton(\n                            text = stringResource(R.string.terminal_open),\n                            onClick = onOpenTerminal,\n                        )\n                    },\n                )\n            }\n        }\n        item(key = "status-title")'''
+              if marker not in text:
+                  raise SystemExit('LinuxEnvironmentScreen marker not found')
+              text = text.replace(marker, card, 1)
+          linux.write_text(text)
+
+          screen = Path('app/src/main/kotlin/io/github/mangi/eta/ui/screens/terminal/TerminalScreen.kt')
+          if not screen.exists():
+              screen.write_text(r'''package io.github.mangi.eta.ui.screens.terminal
+
+import android.content.Context
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import io.github.mangi.eta.R
+import io.github.mangi.eta.agent.terminal.AlpineEnvironmentPaths
+import io.github.mangi.eta.agent.terminal.RootShellTerminalController
+import io.github.mangi.eta.core.AndroidAgentLogger
+import io.github.mangi.eta.ui.components.MiuixScaffoldPage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TextField
+
+@Composable
+internal fun TerminalScreen(
+    context: Context,
+    onBack: () -> Unit,
+) {
+    val applicationContext = context.applicationContext
+    val controller = remember(applicationContext) {
+        RootShellTerminalController(
+            logger = AndroidAgentLogger,
+            linuxRootfsPath = AlpineEnvironmentPaths.rootfsDir(applicationContext).absolutePath,
+        )
+    }
+    val scope = rememberCoroutineScope()
+    var command by remember { mutableStateOf("codex --version") }
+    var sessionId by remember { mutableStateOf<String?>(null) }
+    var output by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    DisposableEffect(controller) {
+        onDispose { controller.closeAll() }
+    }
+
+    fun runTerminal(action: () -> String) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { action() }.getOrElse { error ->
+                    JSONObject().put("ok", false).put("message", error.message ?: error.javaClass.simpleName).toString()
+                }
+            }
+            val json = runCatching { JSONObject(result) }.getOrNull()
+            if (json?.optBoolean("ok") == true) {
+                json.optString("session_id").takeIf { it.isNotBlank() }?.let { sessionId = it }
+            }
+            output = result
+            busy = false
+        }
+    }
+
+    MiuixScaffoldPage(
+        title = context.getString(R.string.terminal_title),
+        onBack = onBack,
+    ) {
+        item(key = "terminal-info") {
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp),
+            ) {
+                BasicComponent(
+                    title = context.getString(R.string.terminal_session),
+                    summary = context.getString(R.string.terminal_linux_root_hint),
+                )
+            }
+        }
+        item(key = "terminal-command") {
+            TextField(
+                value = command,
+                onValueChange = { command = it },
+                label = context.getString(R.string.terminal_command),
+                enabled = !busy,
+                singleLine = false,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 8.dp),
+            )
+        }
+        item(key = "terminal-actions") {
+            Card(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp),
+            ) {
+                TextButton(
+                    text = if (busy) context.getString(R.string.terminal_working)
+                    else if (sessionId == null) context.getString(R.string.terminal_open_session)
+                    else context.getString(R.string.terminal_execute),
+                    enabled = !busy && command.isNotBlank(),
+                    onClick = {
+                        if (sessionId == null) {
+                            runTerminal {
+                                controller.terminalAction(
+                                    action = "open",
+                                    command = "",
+                                    cwd = null,
+                                    timeoutMs = 5_000,
+                                    identity = "root",
+                                    mergeStderr = true,
+                                    sessionId = null,
+                                    jobId = null,
+                                    async = false,
+                                    offsetChars = 0,
+                                    maxChars = 16_000,
+                                    closeIfDone = false,
+                                    environment = "linux",
+                                )
+                            }
+                        } else {
+                            runTerminal {
+                                controller.terminalAction(
+                                    action = "exec",
+                                    command = command,
+                                    cwd = null,
+                                    timeoutMs = 60_000,
+                                    identity = "root",
+                                    mergeStderr = true,
+                                    sessionId = sessionId,
+                                    jobId = null,
+                                    async = false,
+                                    offsetChars = 0,
+                                    maxChars = 16_000,
+                                    closeIfDone = false,
+                                    environment = "linux",
+                                )
+                            }
+                        }
+                    },
+                )
+                TextButton(
+                    text = context.getString(R.string.terminal_login_hint),
+                    enabled = !busy && sessionId != null,
+                    onClick = { command = "codex login --device-auth" },
+                )
+                TextButton(
+                    text = context.getString(R.string.terminal_close_session),
+                    enabled = !busy && sessionId != null,
+                    onClick = {
+                        val current = sessionId ?: return@TextButton
+                        runTerminal {
+                            controller.terminalAction(
+                                action = "close",
+                                command = "",
+                                cwd = null,
+                                timeoutMs = 5_000,
+                                identity = "root",
+                                mergeStderr = true,
+                                sessionId = current,
+                                jobId = null,
+                                async = false,
+                                offsetChars = 0,
+                                maxChars = 16_000,
+                                closeIfDone = false,
+                                environment = "linux",
+                            )
+                        }
+                        sessionId = null
+                    },
+                )
+            }
+        }
+        if (output.isNotBlank()) {
+            item(key = "terminal-output") {
+                BasicComponent(
+                    title = context.getString(R.string.terminal_output),
+                    summary = output.takeLast(16_000),
+                )
+            }
+        }
+    }
+}
+''')
+
+          values = Path('app/src/main/res/values/strings-terminal.xml')
+          if not values.exists():
+              values.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="terminal_title">Terminal</string>\n  <string name="terminal_summary">Run commands in the Alpine Linux environment</string>\n  <string name="terminal_session">Linux root session</string>\n  <string name="terminal_linux_root_hint">Commands run in the installed Linux environment as root.</string>\n  <string name="terminal_command">Command</string>\n  <string name="terminal_open">Open terminal</string>\n  <string name="terminal_open_session">Open session</string>\n  <string name="terminal_execute">Execute</string>\n  <string name="terminal_working">Working…</string>\n  <string name="terminal_login_hint">Prepare Codex login</string>\n  <string name="terminal_close_session">Close session</string>\n  <string name="terminal_output">Output</string>\n</resources>\n''')
+
+          russian = Path('app/src/main/res/values-ru/strings-terminal.xml')
+          if not russian.exists():
+              russian.write_text('''<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="terminal_title">Терминал</string>\n  <string name="terminal_summary">Выполнение команд в среде Alpine Linux</string>\n  <string name="terminal_session">Сессия Linux с root</string>\n  <string name="terminal_linux_root_hint">Команды выполняются в установленной Linux-среде от имени root.</string>\n  <string name="terminal_command">Команда</string>\n  <string name="terminal_open">Открыть терминал</string>\n  <string name="terminal_open_session">Открыть сессию</string>\n  <string name="terminal_execute">Выполнить</string>\n  <string name="terminal_working">Выполнение…</string>\n  <string name="terminal_login_hint">Подготовить вход в Codex</string>\n  <string name="terminal_close_session">Закрыть сессию</string>\n  <string name="terminal_output">Вывод</string>\n</resources>\n''')
+          PY
+
+      - name: Commit terminal UI
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main app/src/main/res
+          git diff --cached --quiet || git commit -m "feat: add interactive Linux terminal screen"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
