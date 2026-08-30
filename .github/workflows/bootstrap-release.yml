@@ -55,11 +55,8 @@ jobs:
       - name: Build one signed Release APK
         env:
           ETA_RELEASE_STORE_FILE: ${{ runner.temp }}/eta-release.jks
-          ETA_RELEASE_STORE_PASSWORD: ${{ steps.key.outputs.password }}
           ETA_RELEASE_KEY_ALIAS: eta-ru-release
-          ETA_RELEASE_KEY_PASSWORD: ${{ steps.key.outputs.password }}
         run: |
-          # Read the generated password without printing it.
           password="$(sed -n 's/^ETA_RELEASE_STORE_PASSWORD=//p' "$RUNNER_TEMP/credentials.txt")"
           export ETA_RELEASE_STORE_PASSWORD="$password"
           export ETA_RELEASE_KEY_PASSWORD="$password"
