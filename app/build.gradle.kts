@@ -30,8 +30,8 @@ android {
         applicationId = "io.github.mangi.eta"
         minSdk = 34
         targetSdk = 36
-        versionCode = 266
-        versionName = "2.6.6"
+        versionCode = 267
+        versionName = "2.6.7"
     }
 
     signingConfigs {
@@ -77,9 +77,7 @@ android {
 
     packaging {
         resources {
-            // Merge Xposed module declarations so the module entry remains available in release builds.
             merges += "META-INF/xposed/*"
-            // Exclude only metadata that causes packaging conflicts.
             excludes += "META-INF/*.kotlin_module"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/io.netty.versions.properties"
@@ -98,7 +96,6 @@ android {
 
 dependencies {
     compileOnly(libs.libxposed.api)
-    // RemotePreferences bridge for the UI and hooks.
     implementation(libs.libxposed.service)
     implementation(libs.miuix.ui)
     implementation(libs.miuix.blur)
