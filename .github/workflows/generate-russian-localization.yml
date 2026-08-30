@@ -31,46 +31,67 @@ jobs:
 
           source, target = os.environ['SOURCE'], os.environ['TARGET']
           token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
+          chinese_re = re.compile(r'[\u3400-\u9fff]')
           cache = {}
 
-          def translate(text):
-              if not text or not re.search(r'[\u3400-\u9fff]', text):
-                  return text
-              if text in cache:
-                  return cache[text]
-              protected = []
-              def protect(match):
-                  protected.append(match.group(0))
-                  return f'ZXQPLACEHOLDER{len(protected)-1}QXZ'
-              query = token_re.sub(protect, text)
+          def mask(text):
+              values = []
+              def replace(match):
+                  values.append(match.group(0))
+                  return f'ZXQPLACEHOLDER{len(values)-1}QXZ'
+              return token_re.sub(replace, text), values
+
+          def restore(text, values):
+              for index, value in enumerate(values):
+                  text = text.replace(f'ZXQPLACEHOLDER{index}QXZ', value)
+              return text
+
+          def request(text):
               url = 'https://translate.googleapis.com/translate_a/single?' + urllib.parse.urlencode({
-                  'client': 'gtx', 'sl': 'zh-CN', 'tl': 'ru', 'dt': 't', 'q': query
+                  'client': 'gtx', 'sl': 'zh-CN', 'tl': 'ru', 'dt': 't', 'q': text
               })
-              for attempt in range(6):
+              for attempt in range(8):
                   try:
-                      with urllib.request.urlopen(url, timeout=30) as response:
-                          translated = ''.join(part[0] for part in json.loads(response.read().decode('utf-8'))[0])
-                      for index, value in enumerate(protected):
-                          translated = translated.replace(f'ZXQPLACEHOLDER{index}QXZ', value)
-                      cache[text] = translated
-                      return translated
-                  except Exception as error:
-                      if attempt == 5:
-                          raise error
-                      time.sleep(2 * (attempt + 1))
+                      with urllib.request.urlopen(url, timeout=45) as response:
+                          return ''.join(part[0] for part in json.loads(response.read().decode('utf-8'))[0])
+                  except Exception:
+                      if attempt == 7:
+                          raise
+                      time.sleep(10 * (attempt + 1))
 
           tree = ET.parse(source)
           root = tree.getroot()
-          translated_count = 0
-          for element in root.iter():
-              if element.text:
-                  element.text = translate(element.text)
-                  translated_count += 1
-              if element.tail and element.tail.strip():
-                  element.tail = translate(element.tail)
+          elements = [element for element in root.iter() if element.text and chinese_re.search(element.text)]
+          unique = list(dict.fromkeys(element.text for element in elements))
+          translations = {}
+
+          # The public endpoint throttles individual requests. Translate groups under
+          # 4,000 characters, separated by a stable ASCII marker, then map them back.
+          batches, batch, size = [], [], 0
+          for text in unique:
+              if batch and size + len(text) + 32 > 3800:
+                  batches.append(batch); batch, size = [], 0
+              batch.append(text); size += len(text) + 32
+          if batch:
+              batches.append(batch)
+
+          for number, batch in enumerate(batches, 1):
+              masked, placeholders = zip(*(mask(text) for text in batch))
+              marker = '\n__ETA_TRANSLATION_SPLIT__\n'
+              translated = request(marker.join(masked))
+              parts = translated.split('__ETA_TRANSLATION_SPLIT__')
+              if len(parts) != len(batch):
+                  raise RuntimeError(f'Unexpected translation batch split: {len(parts)} != {len(batch)}')
+              for original, value, tokens in zip(batch, parts, placeholders):
+                  translations[original] = restore(value.strip(), tokens)
+              print(f'Completed batch {number}/{len(batches)}')
+              time.sleep(1.5)
+
+          for element in elements:
+              element.text = translations[element.text]
           os.makedirs(os.path.dirname(target), exist_ok=True)
           tree.write(target, encoding='utf-8', xml_declaration=True)
-          print(f'Translated {translated_count} XML text nodes into {target}')
+          print(f'Generated {target}: {len(elements)} translated strings')
           PY
 
       - name: Commit localization
