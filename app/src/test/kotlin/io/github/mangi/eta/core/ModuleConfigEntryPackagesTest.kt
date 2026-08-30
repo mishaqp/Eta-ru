@@ -6,12 +6,12 @@ import org.junit.Test
 
 class ModuleConfigEntryPackagesTest {
     @Test
-    fun runtimeOnlyTrustsTheKnownAssistantEntryPackages() {
-        assertEquals(
-            setOf("com.heytap.speechassist", "com.miui.voiceassist"),
-            ModuleConfig.AGENT_RUNTIME_ENTRY_PACKAGES,
-        )
-        assertTrue(ModuleConfig.XIAOAI_CORE_PROCESS.endsWith(":core"))
-        assertEquals("com.oplus.aimemory", ModuleConfig.COLOROS_MEMORY_PACKAGE)
+    fun googleTargetsContainTheSupportedPixelApps() {
+        assertEquals(emptySet<String>(), ModuleConfig.AGENT_RUNTIME_ENTRY_PACKAGES)
+        assertTrue(ModuleConfig.GOOGLE_DIALER_PACKAGE in ModuleConfig.GOOGLE_TARGET_PACKAGES)
+        assertTrue(ModuleConfig.GOOGLE_MESSAGES_PACKAGE in ModuleConfig.GOOGLE_TARGET_PACKAGES)
+        assertTrue(ModuleConfig.GOOGLE_CONTACTS_PACKAGE in ModuleConfig.GOOGLE_TARGET_PACKAGES)
+        assertTrue(ModuleConfig.GOOGLE_CALENDAR_PACKAGE in ModuleConfig.GOOGLE_TARGET_PACKAGES)
+        assertTrue(ModuleConfig.GOOGLE_KEEP_PACKAGE in ModuleConfig.GOOGLE_TARGET_PACKAGES)
     }
 }

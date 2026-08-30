@@ -26,14 +26,14 @@ internal object CircleToSearchInvoker {
         source: String,
         fallbackMessage: String
     ): Boolean {
-        if (!HookSupport.isPackageInstalled(context, ModuleConfig.GOOGLE_PACKAGE)) {
+        if (!HookSupport.isPackageInstalled(context, ModuleConfig.GOOGLE_APP_PACKAGE)) {
             logger.warnThrottled("${source}_cts_google_missing") {
                 "$source: Google App 未安装，$fallbackMessage"
             }
             return false
         }
 
-        val intent = Intent(ModuleConfig.CONTEXTUAL_SEARCH_ACTION).setPackage(ModuleConfig.GOOGLE_PACKAGE)
+        val intent = Intent(ModuleConfig.CONTEXTUAL_SEARCH_ACTION).setPackage(ModuleConfig.GOOGLE_APP_PACKAGE)
         if (!HookSupport.resolvesActivity(context, intent)) {
             logger.warnThrottled("${source}_cts_entry_missing") {
                 "$source: Google App 未暴露 Contextual Search 入口，$fallbackMessage"

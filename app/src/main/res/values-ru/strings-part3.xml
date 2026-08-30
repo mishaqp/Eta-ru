@@ -8,14 +8,14 @@
   <string name="accessibility_protection_rejected">Система отклонила запрос на защиту специальных возможностей</string>
   <string name="status_processing">Обработка…</string>
   <string name="power_assistant_system_default">Системный помощник по умолчанию</string>
-  <string name="systemizer_already_system">Приложение Google уже является привилегированным системным приложением</string>
-  <string name="systemizer_google_missing">Приложение Google не установлено</string>
-  <string name="systemizer_root_manager_missing">Magisk или KernelSU не обнаружены</string>
-  <string name="systemizer_metamodule_missing">Сначала включите поддержку метамодулей в KernelSU</string>
-  <string name="systemizer_grant_kernelsu">Предоставьте Eta root-доступ в KernelSU</string>
-  <string name="systemizer_grant_magisk">Предоставьте Eta root-доступ в Magisk</string>
-  <string name="systemizer_root_denied">Root-доступ не предоставлен</string>
-  <string name="systemizer_installed">Установка завершена. Перезапустите устройство, чтобы применить изменения</string>
+
+
+
+
+
+
+
+
   <string name="provider_error">Ошибка: %1$s</string>
   <string name="provider_save_failed">Не удалось сохранить провайдера</string>
   <string name="provider_delete_failed">Не удалось удалить провайдера</string>

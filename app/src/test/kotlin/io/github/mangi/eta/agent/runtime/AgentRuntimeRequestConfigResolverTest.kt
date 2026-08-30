@@ -30,7 +30,7 @@ class AgentRuntimeRequestConfigResolverTest {
     @Test
     fun externalAssistantRequestKeepsEntryConfig() {
         val entryConfig = modelConfig("entry-key", ReasoningEffort.OFF)
-        val request = request(source = "breeno", config = entryConfig)
+        val request = request(source = AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE, config = entryConfig)
 
         val resolved = AgentRuntimeRequestConfigResolver.applyRuntimeConfig(
             request,

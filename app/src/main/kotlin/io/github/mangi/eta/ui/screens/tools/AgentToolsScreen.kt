@@ -191,7 +191,7 @@ private fun ToolCard(
 }
 
 private fun colorForTool(toolId: String): Color = when (toolId) {
-    // 与设置页保持一致：圆形图标底色统一使用 ColorOS 设置主色，不使用 variant/截图取样色。
+    // 与设置页保持一致：圆形图标底色统一使用 Pixel 设置主色，不使用 variant/截图取样色。
     // 屏幕与控件
     "observe", "observe_screen",
     "click", "tap_element",
@@ -214,7 +214,7 @@ private fun colorForTool(toolId: String): Color = when (toolId) {
     "media_control", "set_volume", "top_memory_apps", "top_storage_apps" -> Color(0xFF00BD13)
     "read_sms_code", "recent_notifications", "wifi_credentials",
     "search_notification_history", "recent_app_activity", "app_usage_summary",
-    "get_current_location", "get_device_environment", "list_alarms", "list_active_timers",
+    "get_current_location", "get_device_environment",
     "search_clipboard_history", "get_health_summary",
     "get_setting", "set_setting", "set_device_state", "app_state_control",
     "get_logcat" -> Color(0xFFFF7700)
@@ -222,10 +222,7 @@ private fun colorForTool(toolId: String): Color = when (toolId) {
     // 个人数据直达
     "search_media", "search_audio", "search_recordings", "search_files",
     "search_calendar_events", "search_contacts", "search_call_history",
-    "search_messages", "search_downloads", "search_coloros_notes",
-    "search_coloros_recordings", "search_recording_summaries", "search_qq_chat_images",
-    "search_coloros_memories", "search_saved_places", "search_personal_orders",
-    "search_wechat_chat_images" -> Color(0xFFFF7700)
+    "search_messages", "search_downloads" -> Color(0xFFFF7700)
 
     // 文件视觉
     "read_image" -> Color(0xFF0066FF)
@@ -276,9 +273,8 @@ private fun iconForTool(toolId: String): Int = when (toolId) {
     "read_sms_code" -> LucideR.drawable.lucide_ic_key
     "recent_notifications", "search_notification_history" -> LucideR.drawable.lucide_ic_bell
     "recent_app_activity", "app_usage_summary" -> LucideR.drawable.lucide_ic_layers
-    "get_current_location", "search_saved_places" -> LucideR.drawable.lucide_ic_map_pin
+    "get_current_location" -> LucideR.drawable.lucide_ic_map_pin
     "get_device_environment" -> LucideR.drawable.lucide_ic_smartphone
-    "list_alarms", "list_active_timers" -> LucideR.drawable.lucide_ic_clock
     "search_clipboard_history" -> LucideR.drawable.lucide_ic_clipboard_paste
     "get_health_summary" -> LucideR.drawable.lucide_ic_activity
     "wifi_credentials" -> LucideR.drawable.lucide_ic_lock
@@ -287,15 +283,11 @@ private fun iconForTool(toolId: String): Int = when (toolId) {
     "get_logcat" -> LucideR.drawable.lucide_ic_file_text
     "search_media" -> LucideR.drawable.lucide_ic_scan_eye
     "search_audio" -> LucideR.drawable.lucide_ic_play
-    "search_recordings", "search_coloros_recordings" -> LucideR.drawable.lucide_ic_mic
+    "search_recordings" -> LucideR.drawable.lucide_ic_mic
     "search_files", "search_downloads" -> LucideR.drawable.lucide_ic_folder_open
     "search_calendar_events" -> LucideR.drawable.lucide_ic_clock
     "search_contacts", "search_call_history" -> LucideR.drawable.lucide_ic_smartphone
     "search_messages" -> LucideR.drawable.lucide_ic_message_square
-    "search_coloros_notes" -> LucideR.drawable.lucide_ic_file_pen
-    "search_recording_summaries", "search_coloros_memories" -> LucideR.drawable.lucide_ic_brain
-    "search_personal_orders" -> LucideR.drawable.lucide_ic_package_search
-    "search_qq_chat_images", "search_wechat_chat_images" -> LucideR.drawable.lucide_ic_scan_eye
     "read_image" -> LucideR.drawable.lucide_ic_scan_eye
     "terminal", "terminal_job", "run_command" -> LucideR.drawable.lucide_ic_square_terminal
     "read_file" -> LucideR.drawable.lucide_ic_file_text

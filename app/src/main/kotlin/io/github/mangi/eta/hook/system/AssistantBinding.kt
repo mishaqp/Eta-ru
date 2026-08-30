@@ -11,10 +11,10 @@ internal data class AssistantBinding(
 )
 
 internal fun assistantBindingFor(target: PowerAssistantTarget): AssistantBinding? = when (target) {
-    PowerAssistantTarget.OEM -> null
+    PowerAssistantTarget.SYSTEM -> null
     PowerAssistantTarget.GEMINI -> AssistantBinding(
         target = target,
-        packageName = ModuleConfig.GOOGLE_PACKAGE,
+        packageName = ModuleConfig.GOOGLE_APP_PACKAGE,
         componentName = ModuleConfig.GOOGLE_ASSISTANT_COMPONENT,
         displayName = "Gemini",
     )
@@ -29,19 +29,19 @@ internal fun assistantBindingFor(target: PowerAssistantTarget): AssistantBinding
 internal fun shouldConfigureAssistant(
     autoConfigEnabled: Boolean,
     target: PowerAssistantTarget,
-): Boolean = autoConfigEnabled && target != PowerAssistantTarget.OEM
+): Boolean = autoConfigEnabled && target != PowerAssistantTarget.SYSTEM
 
 internal enum class AssistantSelectionAction {
     NONE,
     CONFIGURE_MANAGED,
-    RESTORE_OEM,
+    RESTORE_SYSTEM,
 }
 
 internal fun assistantSelectionAction(
     autoConfigEnabled: Boolean,
     target: PowerAssistantTarget,
 ): AssistantSelectionAction = when {
-    target == PowerAssistantTarget.OEM -> AssistantSelectionAction.RESTORE_OEM
+    target == PowerAssistantTarget.SYSTEM -> AssistantSelectionAction.RESTORE_SYSTEM
     shouldConfigureAssistant(autoConfigEnabled, target) ->
         AssistantSelectionAction.CONFIGURE_MANAGED
     else -> AssistantSelectionAction.NONE

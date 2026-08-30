@@ -11,11 +11,11 @@ import org.junit.Test
 class AssistantBindingTest {
     @Test
     fun `OEM target has no managed assistant binding`() {
-        assertNull(assistantBindingFor(PowerAssistantTarget.OEM))
+        assertNull(assistantBindingFor(PowerAssistantTarget.SYSTEM))
         assertFalse(
             shouldConfigureAssistant(
                 autoConfigEnabled = true,
-                target = PowerAssistantTarget.OEM,
+                target = PowerAssistantTarget.SYSTEM,
             ),
         )
     }
@@ -25,7 +25,7 @@ class AssistantBindingTest {
         val gemini = requireNotNull(assistantBindingFor(PowerAssistantTarget.GEMINI))
         val eta = requireNotNull(assistantBindingFor(PowerAssistantTarget.ETA))
 
-        assertEquals(ModuleConfig.GOOGLE_PACKAGE, gemini.packageName)
+        assertEquals(ModuleConfig.GOOGLE_APP_PACKAGE, gemini.packageName)
         assertEquals(ModuleConfig.GOOGLE_ASSISTANT_COMPONENT, gemini.componentName)
         assertEquals(ModuleConfig.ETA_PACKAGE, eta.packageName)
         assertEquals(ModuleConfig.ETA_VOICE_INTERACTION_COMPONENT, eta.componentName)
@@ -71,8 +71,8 @@ class AssistantBindingTest {
             assistantSelectionAction(false, PowerAssistantTarget.GEMINI),
         )
         assertEquals(
-            AssistantSelectionAction.RESTORE_OEM,
-            assistantSelectionAction(false, PowerAssistantTarget.OEM),
+            AssistantSelectionAction.RESTORE_SYSTEM,
+            assistantSelectionAction(false, PowerAssistantTarget.SYSTEM),
         )
     }
 }

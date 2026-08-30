@@ -325,7 +325,7 @@ internal object AssistantManager {
             synchronized(stub) {
                 val impl = HookSupport.getFieldValue(stub, "mImpl") ?: return@synchronized false
                 val component = HookSupport.getFieldValue(impl, "mComponent") as? ComponentName
-                if (component?.packageName != ModuleConfig.GOOGLE_PACKAGE) {
+                if (component?.packageName != ModuleConfig.GOOGLE_APP_PACKAGE) {
                     return@synchronized false
                 }
 
@@ -404,7 +404,7 @@ internal object AssistantManager {
         val target = Prefs.powerAssistantTarget()
         val autoConfigEnabled = Prefs.isEnabled(Prefs.Keys.ASSISTANT_AUTO_CONFIG)
         when (assistantSelectionAction(autoConfigEnabled, target)) {
-            AssistantSelectionAction.RESTORE_OEM -> scheduleOemAssistantRestoration(
+            AssistantSelectionAction.RESTORE_SYSTEM -> scheduleSystemAssistantRestoration(
                 context = context,
                 userId = userId,
                 logger = logger,
@@ -422,14 +422,14 @@ internal object AssistantManager {
         }
     }
 
-    private fun scheduleOemAssistantRestoration(
+    private fun scheduleSystemAssistantRestoration(
         context: Context,
         userId: Int?,
         logger: ModuleLogger,
         handler: Handler,
     ): Boolean = handler.post {
-        if (Prefs.powerAssistantTarget() != PowerAssistantTarget.OEM) return@post
-        restoreOemAssistantForUser(
+        if (Prefs.powerAssistantTarget() != PowerAssistantTarget.SYSTEM) return@post
+        restoreSystemAssistantForUser(
             context = context,
             userId = userId ?: resolveCurrentUserId(),
             logger = logger,
@@ -437,13 +437,13 @@ internal object AssistantManager {
         )
     }
 
-    private fun restoreOemAssistantForUser(
+    private fun restoreSystemAssistantForUser(
         context: Context,
         userId: Int,
         logger: ModuleLogger,
         handler: Handler,
     ) {
-        val configurationKey = ConfigurationKey(userId, PowerAssistantTarget.OEM)
+        val configurationKey = ConfigurationKey(userId, PowerAssistantTarget.SYSTEM)
         if (!beginConfiguration(configurationKey)) return
         try {
             val managedSettings = hasManagedAssistantSettings(context, userId)
@@ -471,7 +471,7 @@ internal object AssistantManager {
             }
 
             if (!managedRole) {
-                completeOemAssistantRestoration(context, userId, logger, roleChanged = false)
+                completeSystemAssistantRestoration(context, userId, logger, roleChanged = false)
                 return
             }
             clearAssistantRoleAsync(
@@ -481,25 +481,25 @@ internal object AssistantManager {
                 handler = handler,
                 configurationKey = configurationKey,
             ) { roleChanged ->
-                completeOemAssistantRestoration(context, userId, logger, roleChanged)
+                completeSystemAssistantRestoration(context, userId, logger, roleChanged)
             }
         } catch (exception: Exception) {
             finishConfiguration(configurationKey)
-            logger.warnThrottled("assistant_oem_restoration_failed") {
+            logger.warnThrottled("assistant_system_restoration_failed") {
                 "AssistantManager: 恢复系统默认助理失败，type=${exception.safeLogType()}"
             }
         }
     }
 
-    private fun completeOemAssistantRestoration(
+    private fun completeSystemAssistantRestoration(
         context: Context,
         userId: Int,
         logger: ModuleLogger,
         roleChanged: Boolean,
     ) {
-        val configurationKey = ConfigurationKey(userId, PowerAssistantTarget.OEM)
+        val configurationKey = ConfigurationKey(userId, PowerAssistantTarget.SYSTEM)
         try {
-            if (Prefs.powerAssistantTarget() != PowerAssistantTarget.OEM) {
+            if (Prefs.powerAssistantTarget() != PowerAssistantTarget.SYSTEM) {
                 invalidateVerificationCache()
                 systemContext?.let { schedulePreferenceSelection(it, logger) }
                 return
@@ -508,8 +508,8 @@ internal object AssistantManager {
             if (hasManagedAssistantRole(context, userId) ||
                 hasManagedAssistantSettings(context, userId)
             ) {
-                logger.warnThrottled("assistant_oem_restoration_incomplete") {
-                    "AssistantManager: ColorOS 原生助理恢复后仍存在托管绑定"
+                logger.warnThrottled("assistant_system_restoration_incomplete") {
+                    "AssistantManager: 系统默认助理恢复后仍存在托管绑定"
                 }
                 return
             }
@@ -519,7 +519,7 @@ internal object AssistantManager {
                 force = roleChanged,
                 logFailures = false,
             )
-            logger.debug { "AssistantManager: 已恢复 ColorOS 原生助理选择" }
+            logger.debug { "AssistantManager: 已恢复 系统默认助理选择" }
         } finally {
             finishConfiguration(configurationKey)
         }
@@ -662,8 +662,8 @@ internal object AssistantManager {
                 )
             ) {
                 invalidateVerificationCache()
-                if (currentTarget == PowerAssistantTarget.OEM) {
-                    scheduleOemAssistantRestoration(context, userId, logger, handler)
+                if (currentTarget == PowerAssistantTarget.SYSTEM) {
+                    scheduleSystemAssistantRestoration(context, userId, logger, handler)
                 } else if (shouldConfigureAssistant(autoConfigEnabled, currentTarget)) {
                     scheduleAssistantConfiguration(
                         context = context,
@@ -692,8 +692,8 @@ internal object AssistantManager {
                 )
             ) {
                 invalidateVerificationCache()
-                if (targetAfterWrite == PowerAssistantTarget.OEM) {
-                    scheduleOemAssistantRestoration(context, userId, logger, handler)
+                if (targetAfterWrite == PowerAssistantTarget.SYSTEM) {
+                    scheduleSystemAssistantRestoration(context, userId, logger, handler)
                 } else if (shouldConfigureAssistant(autoConfigAfterWrite, targetAfterWrite)) {
                     scheduleAssistantConfiguration(
                         context = context,

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
   <string name="app_name">Eta</string>
-  <string name="xposed_description">A system-level AI agent that takes over the Breeno and Super XiaoAI assistant entry points, enables Gemini and Circle to Search, and provides a built-in browser, terminal, and device tools.</string>
+  <string name="xposed_description">System-level AI agent for Google and AOSP Android with Gemini, Circle to Search, browser, terminal, and device tools.</string>
   <string name="agent_accessibility_label">Eta device control</string>
   <string name="agent_accessibility_description">Allow Eta to read the current screen and perform taps, swipes, text input, and system actions.</string>
   <string name="notification_history_service_label">Eta notification history</string>
@@ -266,7 +266,7 @@
   <string name="ui_install_087db6">Install</string>
   <string name="ui_convert_google_apps_to_system_apps_0f6d89">Convert Google Apps to system apps</string>
   <string name="ui_this_will_close_the_current_page_and_clear_eta_brows_1cd331">This will close the current page and clear Eta Browser\'s cookies and site data. External browsers are not affected.</string>
-  <string name="ui_xiaobu_xiaoai_compatible_entrance_ae918a">Xiaobu/Xiaoai compatible entrance</string>
+
   <string name="ui_display_name_ed16be">Display name</string>
   <string name="ui_tool_a72ef1">tool</string>
   <string name="ui_tool_ability_9f0f80">Tools</string>
@@ -282,7 +282,7 @@
   <string name="ui_manually_fill_in_the_display_name_and_model_id_077a7b">Manually fill in the display name and Model ID</string>
   <string name="ui_long_press_on_the_gesture_bar_triggers_a_circle_to_s_b80117">Touch and hold the gesture bar to start Circle to Search</string>
   <string name="ui_open_current_browser_58358e">Open current browser</string>
-  <string name="ui_open_wechat_6b2c28">Open WeChat</string>
+
   <string name="ui_search_provider_74e049">Search provider</string>
   <string name="ui_search_model_df5586">Search model</string>
   <string name="ui_support_anthropic_claude_official_or_compatible_api_de3f80">Support Anthropic Claude official or compatible API</string>
@@ -550,7 +550,7 @@
   <string name="page_folder_46ecac">folder</string>
   <string name="page_google_app_is_already_a_system_priv_app_4f33b0">Google App is already a system priv-app</string>
   <string name="page_google_app_not_installed_2e3e55">Google App not installed</string>
-  <string name="page_help_me_open_wechat_65c265">Help me open WeChat</string>
+
   <string name="page_hide_bb0e7e">hide</string>
   <string name="page_kernelsu_needs_to_enable_metamodule_support_first_5d29de">KernelSU needs to enable metamodule support first</string>
   <string name="page_leave_it_to_eta_to_finish_3d378f">Leave it to Eta to finish.</string>
@@ -597,10 +597,10 @@
   <string name="injected_executing">Eta is working…</string>
   <string name="injected_completed">Eta completed this task</string>
   <string name="injected_failed">Eta could not complete the task. Try again later</string>
-  <string name="injected_breeno_custom_model_disabled">Enable Breeno custom models in Eta settings first</string>
-  <string name="injected_breeno_context_unavailable">Breeno context is unavailable</string>
+
+
   <string name="injected_runtime_failed">Agent Runtime failed</string>
-  <string name="injected_breeno_failed">Breeno custom model failed: %1$s</string>
+
   <string name="injected_using_tool">Using %1$s</string>
   <string name="injected_tool">tool</string>
   <string name="injected_system_tool">system tool</string>
@@ -608,9 +608,9 @@
   <string name="injected_screen_tool">screen tool</string>
   <string name="injected_reasoning_label">Reasoning</string>
   <string name="tool_ui_agent_browser_a66bd5">Agent browser</string>
-  <string name="tool_ui_coloros_notes_6c324c">ColorOS Notes</string>
-  <string name="tool_ui_coloros_recording_a4e425">ColorOS recording</string>
-  <string name="tool_ui_coloros_system_memory_eff961">ColorOS system memory</string>
+
+
+
   <string name="tool_ui_qq_chat_pictures_e21bf9">QQ chat pictures</string>
   <string name="tool_ui_wi_fi_password_80e9a4">Wi‑Fi password</string>
   <string name="tool_ui_user_root_shell_conversational_execution_and_asy_13c2ab">user/root shell, conversational execution and asynchronous reading</string>
@@ -641,7 +641,7 @@
   <string name="tool_ui_application_status_930ff0">Application status</string>
   <string name="tool_ui_current_location_b458ea">Current location</string>
   <string name="tool_ui_recording_summary_2fe550">Recording summary</string>
-  <string name="tool_ui_wechat_chat_pictures_72b268">WeChat chat pictures</string>
+
   <string name="tool_ui_open_app_7c65e7">Open App</string>
   <string name="tool_ui_open_the_notification_bar_quick_settings_and_oth_5e51cf">Open the notification bar, quick settings and other panels</string>
   <string name="tool_ui_perform_up_down_left_and_right_swipe_gestures_3ef0de">Perform up, down, left, and right swipe gestures</string>
@@ -678,7 +678,7 @@
   <string name="tool_ui_retrieve_takeout_shopping_express_delivery_ticke_f8d002">Retrieve takeout, shopping, express delivery, tickets and travel orders</string>
   <string name="tool_ui_retrieve_collected_information_and_its_structure_9c1c71">Retrieve collected information and its structured associated content</string>
   <string name="tool_ui_retrieve_transcribed_summaries_and_notes_associa_9cb00f">Retrieve transcribed summaries and notes associated with recordings</string>
-  <string name="tool_ui_retrieve_recent_pictures_in_wechat_chat_picture__ab66f7">Retrieve recent pictures in WeChat chat picture cache</string>
+
   <string name="tool_ui_retrieve_the_last_7_days_of_notifications_saved__643e43">Retrieve the last 7 days of notifications saved locally after authorization</string>
   <string name="tool_ui_retrieve_documents_and_files_from_shared_storage_7d6193">Retrieve documents and files from shared storage</string>
   <string name="tool_ui_retrieve_normal_recordings_and_call_recordings_55c192">Retrieve normal recordings and call recordings</string>
@@ -812,14 +812,14 @@
   <string name="settings_write_failed">Couldn\'t save settings</string>
   <string name="status_processing">Processing…</string>
   <string name="power_assistant_system_default">System default assistant</string>
-  <string name="systemizer_already_system">Google App is already a system priv-app</string>
-  <string name="systemizer_google_missing">Google App is not installed</string>
-  <string name="systemizer_root_manager_missing">Magisk or KernelSU was not detected</string>
-  <string name="systemizer_metamodule_missing">Enable metamodule support in KernelSU first</string>
-  <string name="systemizer_grant_kernelsu">Grant Eta root access in KernelSU</string>
-  <string name="systemizer_grant_magisk">Grant Eta root access in Magisk</string>
-  <string name="systemizer_root_denied">Root access was not granted</string>
-  <string name="systemizer_installed">Installation complete. Restart to apply changes</string>
+
+
+
+
+
+
+
+
   <string name="provider_error">Failed: %1$s</string>
   <string name="provider_save_failed">Couldn\'t save provider</string>
   <string name="provider_delete_failed">Couldn\'t delete provider</string>
@@ -1009,7 +1009,7 @@
   <string name="attachment_enter_path">Enter path</string>
   <string name="attachment_add">Add</string>
   <string name="suggestion_analyze_screen_prompt">Take a screenshot and describe the current screen</string>
-  <string name="suggestion_open_wechat_prompt">Open WeChat</string>
+
   <string name="suggestion_browse_web_prompt">Open Agent Browser, then search for and summarize today’s top technology news</string>
   <string name="suggestion_memory_pressure_prompt">Read /proc/meminfo and /proc/pressure/, focus on PSI (Pressure Stall Information), and summarize current memory pressure and system status</string>
   <string name="injected_image_data_limit">Image data exceeds the safe limit. Resize the image and try again</string>

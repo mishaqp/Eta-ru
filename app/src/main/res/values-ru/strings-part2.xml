@@ -50,7 +50,7 @@
 <string name="ui_install_087db6">Установить</string>
 <string name="ui_convert_google_apps_to_system_apps_0f6d89">Сделать приложения Google системными</string>
 <string name="ui_this_will_close_the_current_page_and_clear_eta_brows_1cd331">Текущая страница закроется, а файлы cookie и данные сайтов Eta Browser будут очищены. Внешние браузеры не затрагиваются.</string>
-<string name="ui_xiaobu_xiaoai_compatible_entrance_ae918a">Совместимый вход Xiaobu/Xiaoai</string>
+
 <string name="ui_display_name_ed16be">Отображаемое имя</string>
 <string name="ui_tool_a72ef1">инструмент</string>
 <string name="ui_tool_ability_9f0f80">Инструменты</string>
@@ -66,7 +66,7 @@
 <string name="ui_manually_fill_in_the_display_name_and_model_id_077a7b">Указать отображаемое имя и идентификатор модели вручную</string>
 <string name="ui_long_press_on_the_gesture_bar_triggers_a_circle_to_s_b80117">Удерживайте панель жестов, чтобы запустить «Обвести и найти»</string>
 <string name="ui_open_current_browser_58358e">Открыть текущий браузер</string>
-<string name="ui_open_wechat_6b2c28">Открыть WeChat</string>
+
 <string name="ui_search_provider_74e049">Найти провайдера</string>
 <string name="ui_search_model_df5586">Найти модель</string>
 <string name="ui_support_anthropic_claude_official_or_compatible_api_de3f80">Поддерживается официальный или совместимый API Anthropic Claude</string>
@@ -255,7 +255,7 @@
 <string name="page_enter_path_ec5f01">Введите путь</string>
 <string name="page_eta_is_executing_032532">Eta выполняет задачу…</string>
 <string name="page_folder_46ecac">папка</string>
-<string name="page_help_me_open_wechat_65c265">Помоги открыть WeChat</string>
+
 <string name="page_hide_bb0e7e">скрыть</string>
 <string name="page_leave_it_to_eta_to_finish_3d378f">Поручите это Eta.</string>
 <string name="page_missing_2fe9b7">Отсутствует</string>
@@ -287,10 +287,10 @@
 <string name="injected_executing">Eta выполняет задачу…</string>
 <string name="injected_completed">Eta выполнила эту задачу</string>
 <string name="injected_failed">Eta не смогла выполнить задачу. Повторите попытку позже</string>
-<string name="injected_breeno_custom_model_disabled">Сначала включите пользовательские модели Breeno в настройках Eta</string>
-<string name="injected_breeno_context_unavailable">Контекст Breeno недоступен</string>
+
+
 <string name="injected_runtime_failed">Сбой среды выполнения Агента</string>
-<string name="injected_breeno_failed">Сбой пользовательской модели Breeno: %1$s</string>
+
 <string name="injected_using_tool">Используется %1$s</string>
 <string name="injected_tool">инструмент</string>
 <string name="injected_system_tool">системный инструмент</string>
@@ -343,6 +343,6 @@
 <string name="permission_status_ok">Доступно</string><string name="permission_status_missing">Отсутствует</string><string name="permission_status_warning">Проблема</string><string name="permission_status_disabled">Не включено</string>
 <string name="chat_edit_replace_later">При отправке это сообщение и всё после него будут заменены</string><string name="chat_edit_replace_message">При отправке это сообщение будет заменено</string><string name="chat_eta_working">Eta выполняет задачу…</string><string name="chat_input_hint">Попросите Eta что-нибудь сделать</string><string name="chat_stop">Остановить</string><string name="chat_send">Отправить</string><string name="chat_reasoning_effort">Усилие рассуждения: %1$s</string>
 <string name="attachment_image">Изображение</string><string name="attachment_file">Файл</string><string name="attachment_folder">Папка</string><string name="attachment_enter_path">Введите путь</string><string name="attachment_add">Добавить</string>
-<string name="suggestion_analyze_screen_prompt">Сделай снимок экрана и опиши текущий экран</string><string name="suggestion_open_wechat_prompt">Открой WeChat</string><string name="suggestion_browse_web_prompt">Открой браузер Агента, найди и кратко изложи главные технологические новости за сегодня</string><string name="suggestion_memory_pressure_prompt">Прочитай /proc/meminfo и /proc/pressure/, удели внимание PSI (Pressure Stall Information) и кратко опиши текущую нагрузку на память и состояние системы</string>
+<string name="suggestion_analyze_screen_prompt">Сделай снимок экрана и опиши текущий экран</string><string name="suggestion_browse_web_prompt">Открой браузер Агента, найди и кратко изложи главные технологические новости за сегодня</string><string name="suggestion_memory_pressure_prompt">Прочитай /proc/meminfo и /proc/pressure/, удели внимание PSI (Pressure Stall Information) и кратко опиши текущую нагрузку на память и состояние системы</string>
 <string name="injected_image_data_limit">Данные изображения превышают безопасный лимит. Уменьшите изображение и повторите попытку</string><string name="injected_image_count_limit">Одновременно можно прикрепить не более %1$d изображений. Удалите часть изображений и повторите попытку</string><string name="injected_image_input_limit">Входные данные изображений слишком сложны. Удалите часть изображений или упростите их данные</string><string name="injected_image_cache_limit">Данные ссылок на изображения слишком велики для безопасного кэширования. Выберите изображения снова или используйте удалённые ссылки</string><string name="injected_image_unreadable">Некоторые изображения не удалось прочитать. Выберите их снова и повторите попытку</string>
 </resources>

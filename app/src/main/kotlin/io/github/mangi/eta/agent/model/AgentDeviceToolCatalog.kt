@@ -144,23 +144,6 @@ internal object AgentDeviceToolCatalog {
             )
             .put(emptyFunction("get_current_location", "读取系统已有的最近位置，不持续监听或主动唤醒 GPS。"))
             .put(emptyFunction("get_device_environment", "读取锁屏、勿扰、铃声、音频输出和外接显示器状态。"))
-            .put(
-                function(
-                    "list_alarms",
-                    "读取 ColorOS 时钟中的闹钟计划。",
-                    properties(
-                        "enabled_only" to boolean("是否只返回已启用闹钟，默认 true"),
-                        "limit" to integer("最多返回数量，默认 20", 1, 50),
-                    ),
-                ),
-            )
-            .put(
-                function(
-                    "list_active_timers",
-                    "读取 ColorOS 时钟中正在运行或暂停的计时器。",
-                    properties("limit" to integer("最多返回数量，默认 20", 1, 50)),
-                ),
-            )
             .put(searchFunction("search_clipboard_history", "检索当前系统输入法保存的剪贴板历史。"))
             .put(
                 function(
@@ -197,14 +180,6 @@ internal object AgentDeviceToolCatalog {
             .put(searchFunction("search_call_history", "检索通话记录，可按号码或联系人缓存名筛选。"))
             .put(searchFunction("search_messages", "检索短信，可按发送方或正文关键词筛选。结果属于敏感个人内容。"))
             .put(searchFunction("search_downloads", "检索系统下载记录，可按文件名或说明筛选。"))
-            .put(searchFunction("search_coloros_notes", "检索 ColorOS 便签和待办，可按标题或正文筛选。仅在安装并可访问 ColorOS 便签时可用。"))
-            .put(searchFunction("search_coloros_recordings", "检索 ColorOS 录音应用中的普通录音和通话录音，返回名称、时长、类型和文件路径。"))
-            .put(searchFunction("search_recording_summaries", "检索 ColorOS 录音关联的转写摘要和便签内容。仅在录音应用生成过摘要时可用。"))
-            .put(searchFunction("search_coloros_memories", "检索 ColorOS 系统记忆，可读取已收集的信息、账单、日程、取件码、快递、地点和附件等关联内容。"))
-            .put(searchFunction("search_saved_places", "检索系统记忆中保存或识别的地点。"))
-            .put(searchFunction("search_personal_orders", "检索系统记忆中识别的外卖、购物、快递、票券和出行订单。"))
-            .put(searchFunction("search_qq_chat_images", "检索 QQ 聊天图片缓存，返回最近文件的时间、大小、类型和私有路径。仅在安装 QQ 且缓存仍存在时可用。"))
-            .put(searchFunction("search_wechat_chat_images", "检索微信聊天图片缓存，返回最近文件的时间、大小和私有路径。仅在安装微信且缓存仍存在时可用。"))
     }
 
     private fun appendSensitiveActionTools(tools: JSONArray) {

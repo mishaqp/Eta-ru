@@ -50,7 +50,7 @@ internal fun ProviderSection(
     }
 }
 
-/** ColorOS 风格圆形彩色图标（32dp 圆形底 + 纯白图标），与设置页视觉一致。 */
+/** Pixel 风格圆形彩色图标（32dp 圆形底 + 纯白图标），与设置页视觉一致。 */
 @Composable
 internal fun ProviderRoundIcon(
     @DrawableRes icon: Int,

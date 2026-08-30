@@ -39,15 +39,9 @@ import io.github.mangi.eta.config.PowerAssistantTarget
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
-import io.github.mangi.eta.systemizer.GoogleAppSystemizerInstaller
-import io.github.mangi.eta.ui.components.MiuixDialogActions
 import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.navigation.AppRoute
-import io.github.mangi.eta.systemizer.RootManager
-import io.github.mangi.eta.systemizer.SystemizerInstallResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -59,20 +53,16 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
 
-// ── ColorOS / COUI 主色（ColorOS 16.1 Settings.apk: coui_color_*） ────────────────
-// 约定：设置页圆形图标/按钮底色只使用 ColorOS 设置主色。
-// 不要用 coui_color_*_variant、截图平均取样色或 Material/iOS 近似色替代，否则实心圆底会发灰或偏色。
-private val ColorOSOrangeRed = Color(0xFFFF7700)
-private val ColorOSRoyalBlue = Color(0xFF0066FF)
-private val ColorOSVividGreen = Color(0xFF00BD13)
-private val ColorOSAmberYellow = Color(0xFFFFB200)
-private val ColorOSLightBlue = Color(0xFF0066FF)
-private val ColorOSRed = Color(0xFFEB3B2F)
-private val ColorOSPurple = Color(0xFF0066FF)
-private val ColorOSSlateGray = Color(0xFF0066FF)
-private val ColorOSOrange = Color(0xFFFF7700)
+// Pixel-oriented accent colors for settings icons and actions.
+private val PixelOrangeRed = Color(0xFFFF7700)
+private val PixelRoyalBlue = Color(0xFF0066FF)
+private val PixelVividGreen = Color(0xFF00BD13)
+private val PixelAmberYellow = Color(0xFFFFB200)
+private val PixelLightBlue = Color(0xFF0066FF)
+private val PixelRed = Color(0xFFEB3B2F)
+private val PixelPurple = Color(0xFF0066FF)
+private val PixelOrange = Color(0xFFFF7700)
 
 /**
  * 模块配置界面。
@@ -87,8 +77,6 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var showSystemizerDialog by remember { mutableStateOf(false) }
-    var installingSystemizer by remember { mutableStateOf(false) }
 
     // 悬浮窗权限状态：授权后从系统设置返回时（ON_RESUME）刷新。
     var overlayGranted by remember {
@@ -204,7 +192,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_cpu,
-                                tint = ColorOSPurple,
+                                tint = PixelPurple,
                             )
                         },
                         onClick = { onNavigate(AppRoute.ModelProviders) },
@@ -216,7 +204,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_deep_thinking_enabled_by_default_c032d6),
                         key = Prefs.Keys.AGENT_THINKING_ENABLED,
                         icon = LucideR.drawable.lucide_ic_brain_circuit,
-                        iconTint = ColorOSRoyalBlue,
+                        iconTint = PixelRoyalBlue,
                     )
                 }
             }
@@ -230,7 +218,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_notebook_tabs,
-                                tint = ColorOSOrange,
+                                tint = PixelOrange,
                             )
                         },
                         onClick = { onNavigate(AppRoute.Memory) },
@@ -241,7 +229,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_puzzle,
-                                tint = ColorOSRoyalBlue,
+                                tint = PixelRoyalBlue,
                             )
                         },
                         onClick = { onNavigate(AppRoute.Skills) },
@@ -252,7 +240,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_network,
-                                tint = ColorOSVividGreen,
+                                tint = PixelVividGreen,
                             )
                         },
                         onClick = { onNavigate(AppRoute.McpServers) },
@@ -270,7 +258,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_enable_web_browsing_tools_8b6b03),
                         key = Prefs.Keys.AGENT_BROWSER_TOOLS,
                         icon = LucideR.drawable.lucide_ic_globe,
-                        iconTint = ColorOSVividGreen,
+                        iconTint = PixelVividGreen,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -279,7 +267,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_enable_device_direct_tools_e2d595),
                         key = Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS,
                         icon = LucideR.drawable.lucide_ic_smartphone,
-                        iconTint = ColorOSVividGreen,
+                        iconTint = PixelVividGreen,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -288,7 +276,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_allow_reading_of_sensitive_device_information_feaec0),
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS,
                         icon = LucideR.drawable.lucide_ic_eye,
-                        iconTint = ColorOSAmberYellow,
+                        iconTint = PixelAmberYellow,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -297,7 +285,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_allow_sensitive_device_operation_3d42ea),
                         key = Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS,
                         icon = LucideR.drawable.lucide_ic_shield_alert,
-                        iconTint = ColorOSAmberYellow,
+                        iconTint = PixelAmberYellow,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -306,7 +294,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_enable_terminal_file_tools_18bb43),
                         key = Prefs.Keys.AGENT_TERMINAL_TOOLS,
                         icon = LucideR.drawable.lucide_ic_file_terminal,
-                        iconTint = ColorOSAmberYellow,
+                        iconTint = PixelAmberYellow,
                     )
                     PrefDivider()
                     ArrowPreference(
@@ -314,7 +302,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_container,
-                                tint = ColorOSVividGreen,
+                                tint = PixelVividGreen,
                             )
                         },
                         onClick = { onNavigate(AppRoute.LinuxEnvironment) },
@@ -338,7 +326,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_bot,
-                                tint = ColorOSRoyalBlue,
+                                tint = PixelRoyalBlue,
                             )
                         },
                         onClick = openAssistantSettings,
@@ -372,7 +360,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_power,
-                                tint = ColorOSOrangeRed,
+                                tint = PixelOrangeRed,
                             )
                         },
                         enabled = prefs != null,
@@ -385,31 +373,7 @@ internal fun SettingsScreen(
                         summary = stringResource(R.string.ui_valid_only_for_gemini_and_eta_d5b63d),
                         key = Prefs.Keys.ASSISTANT_AUTO_CONFIG,
                         icon = LucideR.drawable.lucide_ic_settings_2,
-                        iconTint = ColorOSVividGreen,
-                    )
-                }
-            }
-
-            // ── 厂商助手兼容入口 ──────────────────────────────────────────
-            item(key = "section_oem_assistant_compatibility") {
-                SmallTitle(stringResource(R.string.ui_xiaobu_xiaoai_compatible_entrance_ae918a))
-                Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = stringResource(R.string.ui_enable_vendor_assistant_custom_models_c8e465),
-                        key = Prefs.Keys.AGENT_CUSTOM_MODEL,
-                        icon = LucideR.drawable.lucide_ic_cpu,
-                        iconTint = ColorOSOrangeRed,
-                    )
-                    PrefDivider()
-                    SwitchPref(
-                        context = context,
-                        prefs = prefs,
-                        title = stringResource(R.string.ui_only_take_over_with_agent_prefix_d17556),
-                        key = Prefs.Keys.AGENT_REQUIRE_PREFIX,
-                        icon = LucideR.drawable.lucide_ic_message_square_code,
-                        iconTint = ColorOSAmberYellow,
+                        iconTint = PixelVividGreen,
                     )
                 }
             }
@@ -424,7 +388,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_maintain_hey_google_detection_after_screen_rest_9d6877),
                         key = Prefs.Keys.HOTWORD_SELF_HEAL,
                         icon = LucideR.drawable.lucide_ic_ear,
-                        iconTint = ColorOSAmberYellow,
+                        iconTint = PixelAmberYellow,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -433,7 +397,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_lock_screen_evokes_automatic_voice_input_1cde18),
                         key = Prefs.Keys.LOCKSCREEN_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_lock,
-                        iconTint = ColorOSRed,
+                        iconTint = PixelRed,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -442,24 +406,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_bright_screen_evokes_automatic_voice_input_4358fe),
                         key = Prefs.Keys.SCREEN_ON_VOICE_COMMAND,
                         icon = LucideR.drawable.lucide_ic_mic,
-                        iconTint = ColorOSLightBlue,
-                    )
-                    PrefDivider()
-                    ArrowPreference(
-                        title = stringResource(R.string.ui_convert_google_apps_to_system_apps_0f6d89),
-                        startAction = {
-                            TintedIcon(
-                                icon = LucideR.drawable.lucide_ic_package_check,
-                                tint = ColorOSVividGreen,
-                            )
-                        },
-                        enabled = !installingSystemizer,
-                        holdDownState = showSystemizerDialog,
-                        onClick = {
-                            if (!installingSystemizer) {
-                                showSystemizerDialog = true
-                            }
-                        },
+                        iconTint = PixelLightBlue,
                     )
                 }
             }
@@ -474,7 +421,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_long_press_on_the_gesture_bar_triggers_a_circle_to_s_b80117),
                         key = Prefs.Keys.GESTURE_BAR_CIRCLE_TO_SEARCH,
                         icon = LucideR.drawable.lucide_ic_panel_bottom,
-                        iconTint = ColorOSRoyalBlue,
+                        iconTint = PixelRoyalBlue,
                     )
                     PrefDivider()
                     SwitchPref(
@@ -483,7 +430,7 @@ internal fun SettingsScreen(
                         title = stringResource(R.string.ui_long_press_with_two_fingers_to_trigger_a_circle_sear_ab597a),
                         key = Prefs.Keys.DOUBLE_FINGER_CIRCLE_TO_SEARCH,
                         icon = LucideR.drawable.lucide_ic_hand,
-                        iconTint = ColorOSLightBlue,
+                        iconTint = PixelLightBlue,
                     )
                 }
             }
@@ -497,7 +444,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_palette,
-                                tint = ColorOSRoyalBlue,
+                                tint = PixelRoyalBlue,
                             )
                         },
                         onClick = { onNavigate(AppRoute.AppearanceSettings) },
@@ -508,7 +455,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_file_text,
-                                tint = ColorOSVividGreen,
+                                tint = PixelVividGreen,
                             )
                         },
                         onClick = { onNavigate(AppRoute.DataBackup) },
@@ -525,7 +472,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_layers,
-                                tint = ColorOSOrangeRed,
+                                tint = PixelOrangeRed,
                             )
                         },
                         endActions = {
@@ -537,7 +484,7 @@ internal fun SettingsScreen(
                                 color = if (overlayGranted) {
                                     MiuixTheme.colorScheme.onSurfaceVariantActions
                                 } else {
-                                    ColorOSOrangeRed
+                                    PixelOrangeRed
                                 },
                             )
                         },
@@ -560,7 +507,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_accessibility,
-                                tint = ColorOSRoyalBlue,
+                                tint = PixelRoyalBlue,
                             )
                         },
                         endActions = {
@@ -573,7 +520,7 @@ internal fun SettingsScreen(
                                 color = if (enabled) {
                                     MiuixTheme.colorScheme.onSurfaceVariantActions
                                 } else {
-                                    ColorOSRoyalBlue
+                                    PixelRoyalBlue
                                 },
                             )
                         },
@@ -620,7 +567,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_shield_check,
-                                tint = ColorOSVividGreen,
+                                tint = PixelVividGreen,
                             )
                         },
                         enabled = !accessibilityProtectionPending,
@@ -637,7 +584,7 @@ internal fun SettingsScreen(
                         startAction = {
                             TintedIcon(
                                 icon = LucideR.drawable.lucide_ic_github,
-                                tint = ColorOSPurple,
+                                tint = PixelPurple,
                             )
                         },
                         endActions = {
@@ -659,34 +606,9 @@ internal fun SettingsScreen(
             }
         }
 
-        SystemizerConfirmDialog(
-            show = showSystemizerDialog,
-            installing = installingSystemizer,
-            onDismissRequest = {
-                if (!installingSystemizer) {
-                    showSystemizerDialog = false
-                }
-            },
-            onConfirm = {
-                if (installingSystemizer) return@SystemizerConfirmDialog
-                showSystemizerDialog = false
-                installingSystemizer = true
-                coroutineScope.launch {
-                    val result = withContext(Dispatchers.IO) {
-                        GoogleAppSystemizerInstaller(context.applicationContext).install()
-                    }
-                    installingSystemizer = false
-                    Toast.makeText(
-                        context.applicationContext,
-                        result.toToastMessage(context),
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-            },
-        )
 }
 
-// ── 带色彩的圆形图标（ColorOS 风格：圆形背景 + 纯白图标） ────────────────────────────────
+// ── 带色彩的圆形图标（Pixel 风格：圆形背景 + 纯白图标） ────────────────────────────────
 
 @Composable
 private fun TintedIcon(
@@ -720,35 +642,6 @@ private fun PrefDivider() {
             start = 60.dp,
         ),
     )
-}
-
-// ── 系统化确认对话框 ─────────────────────────────────────────────────────────
-
-@Composable
-private fun SystemizerConfirmDialog(
-    show: Boolean,
-    installing: Boolean,
-    onDismissRequest: () -> Unit,
-    onConfirm: () -> Unit,
-) {
-    WindowDialog(
-        show = show,
-        title = stringResource(R.string.ui_convert_google_apps_to_system_apps_0f6d89),
-        summary = stringResource(R.string.ui_system_applications_have_voice_wake_up_permissions_f_0190f2),
-        onDismissRequest = onDismissRequest,
-    ) {
-        MiuixDialogActions(
-            confirmText = if (installing) {
-                stringResource(R.string.status_processing)
-            } else {
-                stringResource(R.string.action_confirm)
-            },
-            cancelEnabled = !installing,
-            confirmEnabled = !installing,
-            onCancel = onDismissRequest,
-            onConfirm = onConfirm,
-        )
-    }
 }
 
 // ── 带图标的布尔开关 ─────────────────────────────────────────────────────────
@@ -833,7 +726,7 @@ private fun putStringSync(
 
 private fun PowerAssistantTarget.displayName(context: Context): String =
     when (this) {
-        PowerAssistantTarget.OEM -> context.getString(R.string.power_assistant_system_default)
+        PowerAssistantTarget.SYSTEM -> context.getString(R.string.power_assistant_system_default)
         PowerAssistantTarget.GEMINI -> "Gemini"
         PowerAssistantTarget.ETA -> "Eta"
     }
@@ -855,23 +748,3 @@ private fun isEtaAssistantActive(context: Context): Boolean =
         context,
         ComponentName(context, EtaVoiceInteractionService::class.java),
     )
-
-private fun SystemizerInstallResult.toToastMessage(context: Context): String =
-    when (this) {
-        SystemizerInstallResult.AlreadySystemized -> context.getString(R.string.systemizer_already_system)
-        SystemizerInstallResult.GoogleAppMissing -> context.getString(R.string.systemizer_google_missing)
-        SystemizerInstallResult.UnsupportedRootManager -> context.getString(R.string.systemizer_root_manager_missing)
-        SystemizerInstallResult.KernelSuMetamoduleMissing -> context.getString(R.string.systemizer_metamodule_missing)
-        is SystemizerInstallResult.RootPermissionUnavailable -> when (rootManager) {
-            RootManager.KERNEL_SU -> context.getString(R.string.systemizer_grant_kernelsu)
-            RootManager.MAGISK -> context.getString(R.string.systemizer_grant_magisk)
-            RootManager.UNSUPPORTED -> context.getString(R.string.systemizer_root_denied)
-        }
-        is SystemizerInstallResult.InstalledRebootRequired -> context.getString(R.string.systemizer_installed)
-        is SystemizerInstallResult.Failed -> commandOutput
-            .lineSequence()
-            .map { it.trim() }
-            .lastOrNull { it.isNotEmpty() }
-            ?.let { "$message：$it" }
-            ?: message
-    }

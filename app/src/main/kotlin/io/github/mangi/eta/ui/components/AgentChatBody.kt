@@ -930,12 +930,6 @@ private fun EmptyChatState(
             prompt = stringResource(R.string.suggestion_analyze_screen_prompt),
         ),
         SuggestionItem(
-            title = stringResource(R.string.ui_open_wechat_6b2c28),
-            iconRes = LucideR.drawable.lucide_ic_rocket,
-            iconTint = AccentGreen,
-            prompt = stringResource(R.string.suggestion_open_wechat_prompt),
-        ),
-        SuggestionItem(
             title = stringResource(R.string.ui_browse_the_web_da7afb),
             iconRes = LucideR.drawable.lucide_ic_globe,
             iconTint = AccentRed,

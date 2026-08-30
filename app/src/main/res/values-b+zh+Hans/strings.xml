@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
   <string name="app_name">Eta</string>
-  <string name="xposed_description">Eta 系统级 AI Agent：接管小布与超级小爱助手入口，解锁 Gemini 与一圈即搜，并提供内置浏览器、终端和设备工具。</string>
+  <string name="xposed_description">System-level AI agent for Google and AOSP Android with Gemini, Circle to Search, browser, terminal, and device tools.</string>
   <string name="agent_accessibility_label">Eta 设备控制</string>
   <string name="agent_accessibility_description">允许 Eta 读取当前界面并执行点击、滑动、文字输入和系统操作。</string>
   <string name="notification_history_service_label">Eta 通知历史</string>
@@ -248,7 +248,7 @@
   <string name="ui_install_087db6">安装</string>
   <string name="ui_convert_google_apps_to_system_apps_0f6d89">将 Google App 转为系统应用</string>
   <string name="ui_this_will_close_the_current_page_and_clear_eta_brows_1cd331">将关闭当前页面并清除 Eta 浏览器的 Cookie 与站点数据。外部浏览器不会受到影响。</string>
-  <string name="ui_xiaobu_xiaoai_compatible_entrance_ae918a">小布/小爱兼容入口</string>
+
   <string name="ui_display_name_ed16be">展示名称</string>
   <string name="ui_tool_a72ef1">工具</string>
   <string name="ui_tool_ability_9f0f80">工具能力</string>
@@ -264,7 +264,7 @@
   <string name="ui_manually_fill_in_the_display_name_and_model_id_077a7b">手动填写展示名称与 Model ID</string>
   <string name="ui_long_press_on_the_gesture_bar_triggers_a_circle_to_s_b80117">手势条长按触发一圈即搜</string>
   <string name="ui_open_current_browser_58358e">打开当前浏览器</string>
-  <string name="ui_open_wechat_6b2c28">打开微信</string>
+
   <string name="ui_search_provider_74e049">搜索提供商</string>
   <string name="ui_search_model_df5586">搜索模型</string>
   <string name="ui_support_anthropic_claude_official_or_compatible_api_de3f80">支持 Anthropic Claude 官方或兼容 API</string>
@@ -529,7 +529,7 @@
   <string name="page_folder_46ecac">文件夹</string>
   <string name="page_google_app_is_already_a_system_priv_app_4f33b0">Google App 已是系统 priv-app</string>
   <string name="page_google_app_not_installed_2e3e55">未安装 Google App</string>
-  <string name="page_help_me_open_wechat_65c265">帮我打开微信</string>
+
   <string name="page_hide_bb0e7e">隐藏</string>
   <string name="page_kernelsu_needs_to_enable_metamodule_support_first_5d29de">KernelSU 需先启用 metamodule 支持</string>
   <string name="page_leave_it_to_eta_to_finish_3d378f">交给 Eta 去完成</string>
@@ -590,10 +590,10 @@
   <string name="injected_executing">Eta 正在执行任务…</string>
   <string name="injected_completed">Eta 已完成本轮任务</string>
   <string name="injected_failed">Eta 处理失败，请稍后重试</string>
-  <string name="injected_breeno_custom_model_disabled">请先在 Eta 设置中启用“小布自定义模型”</string>
-  <string name="injected_breeno_context_unavailable">无法获取小布进程 Context</string>
+
+
   <string name="injected_runtime_failed">Agent Runtime 调用失败</string>
-  <string name="injected_breeno_failed">小布自定义模型调用失败：%1$s</string>
+
   <string name="injected_using_tool">正在使用%1$s</string>
   <string name="injected_tool">工具</string>
   <string name="injected_system_tool">系统工具</string>
@@ -601,9 +601,9 @@
   <string name="injected_screen_tool">屏幕工具</string>
   <string name="injected_reasoning_label">推理</string>
   <string name="tool_ui_agent_browser_a66bd5">Agent 浏览器</string>
-  <string name="tool_ui_coloros_notes_6c324c">ColorOS 便签</string>
-  <string name="tool_ui_coloros_recording_a4e425">ColorOS 录音</string>
-  <string name="tool_ui_coloros_system_memory_eff961">ColorOS 系统记忆</string>
+
+
+
   <string name="tool_ui_qq_chat_pictures_e21bf9">QQ 聊天图片</string>
   <string name="tool_ui_wi_fi_password_80e9a4">Wi‑Fi 密码</string>
   <string name="tool_ui_user_root_shell_conversational_execution_and_asy_13c2ab">user/root shell，会话式执行与异步读取</string>
@@ -634,7 +634,7 @@
   <string name="tool_ui_application_status_930ff0">应用状态</string>
   <string name="tool_ui_current_location_b458ea">当前位置</string>
   <string name="tool_ui_recording_summary_2fe550">录音摘要</string>
-  <string name="tool_ui_wechat_chat_pictures_72b268">微信聊天图片</string>
+
   <string name="tool_ui_open_app_7c65e7">打开 App</string>
   <string name="tool_ui_open_the_notification_bar_quick_settings_and_oth_5e51cf">打开通知栏、快捷设置等面板</string>
   <string name="tool_ui_perform_up_down_left_and_right_swipe_gestures_3ef0de">执行上下左右滑动手势</string>
@@ -671,7 +671,7 @@
   <string name="tool_ui_retrieve_takeout_shopping_express_delivery_ticke_f8d002">检索外卖、购物、快递、票券和出行订单</string>
   <string name="tool_ui_retrieve_collected_information_and_its_structure_9c1c71">检索已收集的信息及其结构化关联内容</string>
   <string name="tool_ui_retrieve_transcribed_summaries_and_notes_associa_9cb00f">检索录音关联的转写摘要和便签</string>
-  <string name="tool_ui_retrieve_recent_pictures_in_wechat_chat_picture__ab66f7">检索微信聊天图片缓存中的最近图片</string>
+
   <string name="tool_ui_retrieve_the_last_7_days_of_notifications_saved__643e43">检索授权后本机保存的最近 7 天通知</string>
   <string name="tool_ui_retrieve_documents_and_files_from_shared_storage_7d6193">检索文档和共享存储中的文件</string>
   <string name="tool_ui_retrieve_normal_recordings_and_call_recordings_55c192">检索普通录音与通话录音</string>
@@ -804,14 +804,14 @@
   <string name="settings_write_failed">配置写入失败</string>
   <string name="status_processing">处理中…</string>
   <string name="power_assistant_system_default">系统默认助手</string>
-  <string name="systemizer_already_system">Google App 已是系统 priv-app</string>
-  <string name="systemizer_google_missing">未安装 Google App</string>
-  <string name="systemizer_root_manager_missing">未检测到 Magisk 或 KernelSU</string>
-  <string name="systemizer_metamodule_missing">KernelSU 需先启用 metamodule 支持</string>
-  <string name="systemizer_grant_kernelsu">请在 KernelSU 中授予 Eta root 权限</string>
-  <string name="systemizer_grant_magisk">请在 Magisk 中授予 Eta root 权限</string>
-  <string name="systemizer_root_denied">未获得 root 权限</string>
-  <string name="systemizer_installed">安装完成，重启后生效</string>
+
+
+
+
+
+
+
+
   <string name="provider_error">失败：%1$s</string>
   <string name="provider_save_failed">保存失败</string>
   <string name="provider_delete_failed">删除失败</string>
@@ -993,7 +993,7 @@
   <string name="attachment_enter_path">输入路径</string>
   <string name="attachment_add">添加</string>
   <string name="suggestion_analyze_screen_prompt">截图并描述当前屏幕</string>
-  <string name="suggestion_open_wechat_prompt">帮我打开微信</string>
+
   <string name="suggestion_browse_web_prompt">打开 Agent 浏览器，搜索并总结今天的科技新闻要点</string>
   <string name="suggestion_memory_pressure_prompt">读取 /proc/meminfo 和 /proc/pressure/，重点分析 PSI（Pressure Stall Information）指标，总结当前内存压力和系统状态</string>
   <string name="injected_image_data_limit">图片输入数据超过安全上限，请缩小图片后重试</string>
