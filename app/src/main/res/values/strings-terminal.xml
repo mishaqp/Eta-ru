@@ -11,5 +11,7 @@
   <string name="terminal_working">Working…</string>
   <string name="terminal_login_hint">Prepare Codex login</string>
   <string name="terminal_close_session">Close session</string>
+  <string name="terminal_refresh">Refresh output</string>
+  <string name="terminal_session_ready">Session ready</string>
   <string name="terminal_output">Output</string>
 </resources>
