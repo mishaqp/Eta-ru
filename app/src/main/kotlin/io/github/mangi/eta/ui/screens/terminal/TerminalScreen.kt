@@ -25,6 +25,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 
+/** Interactive Linux command runner. Async jobs are used so commands such as Codex login can wait. */
 @Composable
 internal fun TerminalScreen(context: Context, onBack: () -> Unit) {
     val appContext = context.applicationContext
@@ -36,28 +37,64 @@ internal fun TerminalScreen(context: Context, onBack: () -> Unit) {
     }
     val scope = rememberCoroutineScope()
     var command by remember { mutableStateOf("codex --version") }
-    var sessionId by remember { mutableStateOf<String?>(null) }
+    var jobId by remember { mutableStateOf<String?>(null) }
     var output by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
     DisposableEffect(controller) { onDispose { controller.closeAll() } }
 
+    fun displayResult(raw: String): String {
+        val json = runCatching { JSONObject(raw) }.getOrNull() ?: return raw
+        if (!json.optBoolean("ok")) return json.optString("message").ifBlank { raw }
+        val stdout = json.optString("stdout")
+        val stderr = json.optString("stderr")
+        val exit = if (json.has("exit_code") && !json.optBoolean("running")) {
+            "\n[exit=${json.optInt("exit_code")}]"
+        } else ""
+        return (stdout + if (stderr.isNotBlank()) "\n[stderr]\n$stderr" else "" + exit)
+            .replace(Regex("\u001B\\[[;\\d?]*[ -/]*[@-~]"), "")
+            .trim()
+            .ifBlank { context.getString(R.string.terminal_session_ready) }
+    }
+
     fun call(action: () -> String) {
         if (busy) return
         busy = true
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
+            val raw = withContext(Dispatchers.IO) {
                 runCatching { action() }.getOrElse { error ->
-                    JSONObject().put("ok", false).put("message", error.message ?: error.javaClass.simpleName).toString()
+                    JSONObject().put("ok", false)
+                        .put("message", error.message ?: error.javaClass.simpleName).toString()
                 }
             }
-            runCatching { JSONObject(result) }.getOrNull()?.let { json ->
+            runCatching { JSONObject(raw) }.getOrNull()?.let { json ->
                 if (json.optBoolean("ok")) {
-                    json.optString("session_id").takeIf { it.isNotBlank() }?.let { sessionId = it }
+                    json.optString("job_id").takeIf { it.isNotBlank() }?.let { jobId = it }
                 }
             }
-            output = result
+            output = displayResult(raw)
             busy = false
+        }
+    }
+
+    fun readOutput() {
+        val id = jobId ?: return
+        call {
+            controller.terminalAction(
+                action = "read_async_result",
+                command = "",
+                cwd = null,
+                timeoutMs = 5_000,
+                identity = "root",
+                mergeStderr = true,
+                sessionId = null,
+                jobId = id,
+                async = false,
+                offsetChars = 0,
+                maxChars = 16_000,
+                closeIfDone = false,
+                environment = "linux",
+            )
         }
     }
 
@@ -84,35 +121,78 @@ internal fun TerminalScreen(context: Context, onBack: () -> Unit) {
             Card(Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                 TextButton(
                     text = if (busy) context.getString(R.string.terminal_working)
-                    else if (sessionId == null) context.getString(R.string.terminal_open_session)
                     else context.getString(R.string.terminal_execute),
                     enabled = !busy && command.isNotBlank(),
                     onClick = {
-                        if (sessionId == null) {
-                            call {
-                                controller.terminalAction("open", "", null, 5_000, "root", true, null, null, false, 0, 16_000, false, "linux")
-                            }
-                        } else {
-                            call {
-                                controller.terminalAction("exec", command, null, 60_000, "root", true, sessionId, null, false, 0, 16_000, false, "linux")
-                            }
+                        call {
+                            val started = controller.terminalAction(
+                                action = "open_and_exec",
+                                command = command,
+                                cwd = null,
+                                timeoutMs = 180_000,
+                                identity = "root",
+                                mergeStderr = true,
+                                sessionId = null,
+                                jobId = null,
+                                async = true,
+                                offsetChars = 0,
+                                maxChars = 16_000,
+                                closeIfDone = false,
+                                environment = "linux",
+                            )
+                            Thread.sleep(800)
+                            val id = JSONObject(started).optString("job_id")
+                            if (id.isBlank()) started else controller.terminalAction(
+                                action = "read_async_result",
+                                command = "",
+                                cwd = null,
+                                timeoutMs = 5_000,
+                                identity = "root",
+                                mergeStderr = true,
+                                sessionId = null,
+                                jobId = id,
+                                async = false,
+                                offsetChars = 0,
+                                maxChars = 16_000,
+                                closeIfDone = false,
+                                environment = "linux",
+                            )
                         }
                     },
                 )
                 TextButton(
                     text = context.getString(R.string.terminal_login_hint),
-                    enabled = !busy && sessionId != null,
+                    enabled = !busy,
                     onClick = { command = "codex login --device-auth" },
                 )
                 TextButton(
+                    text = context.getString(R.string.terminal_refresh),
+                    enabled = !busy && jobId != null,
+                    onClick = ::readOutput,
+                )
+                TextButton(
                     text = context.getString(R.string.terminal_close_session),
-                    enabled = !busy && sessionId != null,
+                    enabled = !busy && jobId != null,
                     onClick = {
-                        val id = sessionId ?: return@TextButton
+                        val id = jobId ?: return@TextButton
                         call {
-                            controller.terminalAction("close", "", null, 5_000, "root", true, id, null, false, 0, 16_000, false, "linux")
+                            controller.terminalAction(
+                                action = "close",
+                                command = "",
+                                cwd = null,
+                                timeoutMs = 5_000,
+                                identity = "root",
+                                mergeStderr = true,
+                                sessionId = null,
+                                jobId = id,
+                                async = false,
+                                offsetChars = 0,
+                                maxChars = 16_000,
+                                closeIfDone = false,
+                                environment = "linux",
+                            )
                         }
-                        sessionId = null
+                        jobId = null
                     },
                 )
             }
