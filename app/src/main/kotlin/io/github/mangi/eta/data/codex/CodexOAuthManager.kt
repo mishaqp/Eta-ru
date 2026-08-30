@@ -58,7 +58,9 @@ internal class CodexOAuthManager(
                 Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP,
             )
             val port = ensureCallbackServer()
-            val redirectUri = "http://127.0.0.1:$port/auth/callback"
+            // The Codex OAuth client has localhost registered as its loopback redirect host.
+            // Keep the listener bound to 127.0.0.1, but send the exact registered host in OAuth.
+            val redirectUri = "http://localhost:$port/auth/callback"
             sessions[state] = OAuthSession(verifier, redirectUri)
             _status.value = CodexOAuthStatus.WaitingForBrowser
             val url = Uri.parse(AUTHORIZE_URL).buildUpon()
@@ -88,26 +90,23 @@ internal class CodexOAuthManager(
 
     private fun ensureCallbackServer(): Int {
         callbackPort?.let { return it }
-        var failure: Throwable? = null
-        for (port in CALLBACK_PORTS) {
-            try {
-                val socket = ServerSocket().apply {
-                    reuseAddress = true
-                    bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
-                }
-                callbackServer = socket
-                callbackPort = port
-                executor.execute {
-                    while (!socket.isClosed) {
-                        runCatching { socket.accept() }.getOrNull()?.use(::handleCallback)
-                    }
-                }
-                return port
-            } catch (error: Throwable) {
-                failure = error
+        val port = CALLBACK_PORT
+        val socket = try {
+            ServerSocket().apply {
+                reuseAddress = true
+                bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port))
+            }
+        } catch (error: Throwable) {
+            throw IllegalStateException("Не удалось открыть локальный OAuth callback на порту $port", error)
+        }
+        callbackServer = socket
+        callbackPort = port
+        executor.execute {
+            while (!socket.isClosed) {
+                runCatching { socket.accept() }.getOrNull()?.use(::handleCallback)
             }
         }
-        throw IllegalStateException("Не удалось открыть локальный OAuth callback", failure)
+        return port
     }
 
     private fun handleCallback(socket: java.net.Socket) {
@@ -115,7 +114,7 @@ internal class CodexOAuthManager(
         val requestLine = reader.readLine().orEmpty()
         while (reader.readLine()?.isNotEmpty() == true) Unit
         val target = requestLine.split(' ').getOrNull(1).orEmpty()
-        val uri = Uri.parse("http://127.0.0.1$target")
+        val uri = Uri.parse("http://localhost$target")
         val state = uri.getQueryParameter("state")
         val code = uri.getQueryParameter("code")
         val error = uri.getQueryParameter("error")
@@ -215,6 +214,6 @@ internal class CodexOAuthManager(
         const val AUTHORIZE_URL = "https://auth.openai.com/oauth/authorize"
         const val TOKEN_URL = "https://auth.openai.com/oauth/token"
         const val SCOPES = "openid profile email offline_access"
-        val CALLBACK_PORTS = listOf(1455, 1457)
+        const val CALLBACK_PORT = 1455
     }
 }
