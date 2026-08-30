@@ -243,7 +243,7 @@ internal class AgentRunMessageProjector(
             id = toolActivityMessageId(runId, event.round, event.toolCallId),
             toolName = event.name,
             status = ToolActivityStatusUi.Running,
-            argumentsSummary = event.argsPreview,
+            argumentsSummary = AgentRuntimeTraceLocalization.localize(event.argsPreview),
             command = event.command,
         )
         if (messages.any { it.id == message.id }) return messages
@@ -273,7 +273,7 @@ internal class AgentRunMessageProjector(
             if (index == targetIndex && message is ToolActivityMessageUi) {
                 message.copy(
                     status = status,
-                    resultSummary = event.resultSummary,
+                    resultSummary = AgentRuntimeTraceLocalization.localize(event.resultSummary),
                     imageCount = event.imageCount,
                 )
             } else {
@@ -322,7 +322,9 @@ internal class AgentRunMessageProjector(
             if (message is ToolActivityMessageUi && message.status == ToolActivityStatusUi.Running) {
                 message.copy(
                     status = ToolActivityStatusUi.Failed,
-                    resultSummary = reason.take(MAX_TOOL_RESULT_PREVIEW_CHARS),
+                    resultSummary = AgentRuntimeTraceLocalization.localize(
+                        reason.take(MAX_TOOL_RESULT_PREVIEW_CHARS)
+                    ),
                 )
             } else {
                 message
@@ -337,7 +339,9 @@ internal class AgentRunMessageProjector(
             if (message is ToolActivityMessageUi && message.status == ToolActivityStatusUi.Running) {
                 message.copy(
                     status = ToolActivityStatusUi.Unknown,
-                    resultSummary = reason.take(MAX_TOOL_RESULT_PREVIEW_CHARS),
+                    resultSummary = AgentRuntimeTraceLocalization.localize(
+                        reason.take(MAX_TOOL_RESULT_PREVIEW_CHARS)
+                    ),
                 )
             } else {
                 message
