@@ -1,32 +1,31 @@
 name: Generate Russian Android localization
 
 on:
-  push:
-    branches:
-      - feat/russian-localization
-    paths:
-      - app/src/main/res/values-b+zh+Hans/strings.xml
-      - .github/workflows/generate-russian-localization.yml
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: russian-localization
+  cancel-in-progress: false
+
 jobs:
   translate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Install offline translation engine
         run: python3 -m pip install --disable-pip-version-check argostranslate
 
-      - name: Generate values-ru strings offline
+      - name: Generate values-ru strings from English source
         env:
-          SOURCE: app/src/main/res/values-b+zh+Hans/strings.xml
+          SOURCE: app/src/main/res/values/strings.xml
           TARGET: app/src/main/res/values-ru/strings.xml
         run: |
           python3 - <<'PY'
@@ -36,43 +35,30 @@ jobs:
           import argostranslate.translate
 
           source, target = os.environ['SOURCE'], os.environ['TARGET']
-          chinese_re = re.compile(r'[\u3400-\u9fff]')
-          token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
+          latin_re = re.compile(r'[A-Za-z]')
+          placeholder_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|%%')
 
-          def install_pair(source_code, target_code):
-              packages = argostranslate.package.get_available_packages()
-              package = next((item for item in packages if item.from_code == source_code and item.to_code == target_code), None)
-              if package is None:
-                  available = sorted({f'{item.from_code}->{item.to_code}' for item in packages})
-                  raise RuntimeError(f'Argos package {source_code}->{target_code} is unavailable. Available: {available}')
-              print(f'Installing Argos model {source_code}->{target_code}')
-              argostranslate.package.install_from_path(package.download())
-
-          # The Argos catalog has no direct zh->ru model. Install its supported
-          # Chinese-to-English and English-to-Russian models; Argos composes them.
           argostranslate.package.update_package_index()
-          install_pair('zh', 'en')
-          install_pair('en', 'ru')
-
-          def mask(text):
-              values = []
-              def replace(match):
-                  values.append(match.group(0))
-                  return f'__ETA_PH_{len(values)-1}__'
-              return token_re.sub(replace, text), values
-
-          def restore(text, values):
-              for index, value in enumerate(values):
-                  text = text.replace(f'__ETA_PH_{index}__', value)
-              return text
+          package = next(
+              (item for item in argostranslate.package.get_available_packages()
+               if item.from_code == 'en' and item.to_code == 'ru'),
+              None,
+          )
+          if package is None:
+              raise RuntimeError('Argos English-to-Russian model is unavailable')
+          argostranslate.package.install_from_path(package.download())
 
           tree = ET.parse(source)
           root = tree.getroot()
-          elements = [item for item in root.iter() if item.text and chinese_re.search(item.text)]
+          elements = [item for item in root.iter() if item.text and latin_re.search(item.text)]
           translations = {}
           for number, original in enumerate(dict.fromkeys(item.text for item in elements), 1):
-              masked, tokens = mask(original)
-              translations[original] = restore(argostranslate.translate.translate(masked, 'zh', 'ru'), tokens)
+              translated = argostranslate.translate.translate(original, 'en', 'ru')
+              original_tokens = placeholder_re.findall(original)
+              missing = [token for token in original_tokens if token not in translated]
+              if missing:
+                  raise RuntimeError(f'Android placeholders changed in: {original!r}; missing {missing}')
+              translations[original] = translated
               if number % 50 == 0:
                   print(f'Translated {number} unique strings')
 
@@ -89,4 +75,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main/res/values-ru/strings.xml
           git diff --cached --quiet || git commit -m "feat: add Russian localization"
-          git push
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
