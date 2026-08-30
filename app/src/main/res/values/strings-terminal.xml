@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="terminal_title">Terminal</string>
+  <string name="terminal_summary">Run commands in the Alpine Linux environment</string>
+  <string name="terminal_session">Linux root session</string>
+  <string name="terminal_linux_root_hint">Commands run in the installed Linux environment as root.</string>
+  <string name="terminal_command">Command</string>
+  <string name="terminal_open">Open terminal</string>
+  <string name="terminal_open_session">Open session</string>
+  <string name="terminal_execute">Execute</string>
+  <string name="terminal_working">Working…</string>
+  <string name="terminal_login_hint">Prepare Codex login</string>
+  <string name="terminal_close_session">Close session</string>
+  <string name="terminal_output">Output</string>
+</resources>

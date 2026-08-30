@@ -74,6 +74,7 @@ import io.github.mangi.eta.ui.screens.mcp.McpServersScreen
 import io.github.mangi.eta.ui.screens.permissions.PermissionHealthScreen
 import io.github.mangi.eta.ui.screens.skills.AgentSkillsScreen
 import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen
+import io.github.mangi.eta.ui.screens.terminal.TerminalScreen
 import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
 
 /**
@@ -494,7 +495,11 @@ fun AgentAppRoot(
                 LinuxEnvironmentScreen(
                     context = context,
                     onBack = ::popRoute,
+                    onOpenTerminal = { pushRoute(AppRoute.Terminal) },
                 )
+            }
+            entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {
+                TerminalScreen(context = context, onBack = ::popRoute)
             }
             entry<AppRoute.ModelProviders>(swipeDismiss = swipeDismiss) {
                 ModelProviderListScreen(

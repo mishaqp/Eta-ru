@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="terminal_title">Терминал</string>
+  <string name="terminal_summary">Выполнение команд в среде Alpine Linux</string>
+  <string name="terminal_session">Сессия Linux с root</string>
+  <string name="terminal_linux_root_hint">Команды выполняются в установленной Linux-среде от имени root.</string>
+  <string name="terminal_command">Команда</string>
+  <string name="terminal_open">Открыть терминал</string>
+  <string name="terminal_open_session">Открыть сессию</string>
+  <string name="terminal_execute">Выполнить</string>
+  <string name="terminal_working">Выполнение…</string>
+  <string name="terminal_login_hint">Подготовить вход в Codex</string>
+  <string name="terminal_close_session">Закрыть сессию</string>
+  <string name="terminal_output">Вывод</string>
+</resources>

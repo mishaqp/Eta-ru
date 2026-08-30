@@ -61,6 +61,7 @@ private data class PackageProfileUi(
 internal fun LinuxEnvironmentScreen(
     context: Context,
     onBack: () -> Unit,
+    onOpenTerminal: () -> Unit,
 ) {
     val installer = remember(context.applicationContext) {
         AlpineEnvironmentInstaller(context.applicationContext)
@@ -116,6 +117,22 @@ internal fun LinuxEnvironmentScreen(
         title = stringResource(R.string.ui_linux_tool_environment_314d22),
         onBack = onBack,
     ) {
+        item(key = "terminal-entry-card") {
+            Card(
+                modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp),
+            ) {
+                BasicComponent(
+                    title = stringResource(R.string.terminal_title),
+                    summary = stringResource(R.string.terminal_summary),
+                    endActions = {
+                        TextButton(
+                            text = stringResource(R.string.terminal_open),
+                            onClick = onOpenTerminal,
+                        )
+                    },
+                )
+            }
+        }
         item(key = "status-title") { SmallTitle(stringResource(R.string.ui_environmental_status_5b32a1)) }
         item(key = "status-card") {
             Card(
