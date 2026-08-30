@@ -17,6 +17,7 @@ internal object OpenAiEndpointMode {
 internal object ProviderSourceTypes {
     const val CUSTOM = "custom"
     const val OPENAI = "openai"
+    const val CODEX = "codex"
     const val ANTHROPIC = "anthropic"
     const val BAILIAN = "bailian"
     const val DEEPSEEK = "deepseek"
