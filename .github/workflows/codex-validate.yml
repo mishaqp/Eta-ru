@@ -44,5 +44,5 @@ jobs:
       - name: Compile debug Kotlin
         run: ./gradlew --no-daemon --no-configuration-cache :app:compileDebugKotlin
 
-      - name: Run Codex model picker regression test
-        run: ./gradlew --no-daemon --no-configuration-cache :app:testDebugUnitTest --tests io.github.mangi.eta.ui.model.AgentModelPickerProjectorTest
+      - name: Run targeted agent regression tests
+        run: ./gradlew --no-daemon --no-configuration-cache :app:testDebugUnitTest --tests io.github.mangi.eta.ui.model.AgentModelPickerProjectorTest --tests io.github.mangi.eta.agent.runtime.AgentInterruptedProgressStoreTest
