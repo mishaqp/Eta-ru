@@ -33,14 +33,6 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 
-/**
- * Agent App 统一壳层。
- *
- * - 负责全局 Scaffold、状态栏/横向安全边距、顶层工具栏。
- * - 首页工具栏只保留历史入口与新建对话，保持聊天舞台干净。
- * - 非首页子路由统一提供返回按钮与标题，避免每个页面各自像独立设置页。
- * - Settings 由标准二级页骨架自己提供 TopAppBar，壳层在此路由不重复绘制。
- */
 @Composable
 fun AgentAppShell(
     currentRoute: AppRoute?,
@@ -158,7 +150,6 @@ private fun AgentTopBar(
     }
 
     if (isHome) {
-        // 首页聊天舞台保持紧凑；二级内容页统一使用可折叠大标题。
         SmallTopAppBar(
             title = titleForRoute(route),
             color = color,
@@ -191,6 +182,7 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.DataBackup -> stringResource(R.string.data_backup_title)
     is AppRoute.Memory -> stringResource(R.string.route_memory)
     is AppRoute.LinuxEnvironment -> stringResource(R.string.route_linux_environment)
+    is AppRoute.Terminal -> stringResource(R.string.terminal_title)
     is AppRoute.ModelProviders -> stringResource(R.string.route_model_providers)
     is AppRoute.McpServers -> stringResource(R.string.route_mcp_servers)
     is AppRoute.McpServerDetail -> stringResource(R.string.route_mcp_server_detail)
