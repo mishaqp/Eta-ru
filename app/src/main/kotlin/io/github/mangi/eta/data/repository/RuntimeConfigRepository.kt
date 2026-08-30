@@ -3,13 +3,17 @@ package io.github.mangi.eta.data.repository
 import android.content.SharedPreferences
 import io.github.mangi.eta.agent.model.AgentModelClient
 import io.github.mangi.eta.config.Prefs
+import io.github.mangi.eta.data.codex.CodexAccountRepository
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
+import io.github.mangi.eta.data.model.CustomBody
+import io.github.mangi.eta.data.model.CustomHeader
 import io.github.mangi.eta.data.model.CustomProviderSetting
 import io.github.mangi.eta.data.model.Model
 import io.github.mangi.eta.data.model.OpenAiCompatibleProviderSetting
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
 import io.github.mangi.eta.data.model.ProviderSetting
+import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.model.runtimeProviderType
 import io.github.mangi.eta.data.model.selectedOrFirstModel
@@ -70,7 +74,19 @@ internal object RuntimeConfigRepository {
         val settings = ProviderRepository.repairSelection()
         val provider = settings.selectedProviderId?.let { ProviderRepository.providerById(it) } ?: return null
         val model = provider.selectedOrFirstModel(settings.selectedModelId) ?: return null
-        return buildRuntimeConfig(provider, model)
+        val config = buildRuntimeConfig(provider, model)
+        if (ProviderSourceRegistry.resolve(provider) != ProviderSourceTypes.CODEX) {
+            return config
+        }
+
+        val account = CodexAccountRepository.nextEnabledAccount() ?: return config
+        val accountHeaders = config.customHeaders
+            .filterNot { it.name.equals("ChatGPT-Account-ID", ignoreCase = true) } +
+            CustomHeader("ChatGPT-Account-ID", account.chatgptAccountId)
+        return config.copy(
+            apiKey = account.accessToken,
+            customHeaders = accountHeaders,
+        )
     }
 
     suspend fun syncToRemotePreferences(service: XposedService?): Boolean {
@@ -99,11 +115,11 @@ internal object RuntimeConfigRepository {
             is CustomProviderSetting -> provider.endpointMode
             is AnthropicProviderSetting -> ""
         }
-        val inferOpenAiCatalog = sourceType == io.github.mangi.eta.data.model.ProviderSourceTypes.CUSTOM &&
+        val inferOpenAiCatalog = sourceType == ProviderSourceTypes.CUSTOM &&
             endpointMode == OpenAiEndpointMode.RESPONSES
         val reasoningCapabilities = ReasoningCapabilityResolver.resolve(
-            sourceType = if (inferOpenAiCatalog) {
-                io.github.mangi.eta.data.model.ProviderSourceTypes.OPENAI
+            sourceType = if (inferOpenAiCatalog || sourceType == ProviderSourceTypes.CODEX) {
+                ProviderSourceTypes.OPENAI
             } else {
                 sourceType
             },
