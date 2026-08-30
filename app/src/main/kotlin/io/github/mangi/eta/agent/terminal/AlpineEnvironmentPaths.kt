@@ -10,31 +10,22 @@ internal object AlpineEnvironmentPaths {
     const val APK_ANALYSIS_MARKER = ".eta-apk-analysis-ready"
     const val PYTHON_TOOLS_MARKER = ".eta-python-tools-ready"
     const val NODE_TOOLS_MARKER = ".eta-node-tools-ready"
-    const val CODEX_TOOLS_MARKER = ".eta-codex-tools-ready"
     const val SSH_TOOLS_MARKER = ".eta-ssh-tools-ready"
     const val TOOLSET_REVISION = 3
     const val APK_ANALYSIS_REVISION = 1
     const val PYTHON_TOOLS_REVISION = 1
-    const val NODE_TOOLS_REVISION = 1
-    const val CODEX_TOOLS_REVISION = 1
+    const val NODE_TOOLS_REVISION = 2
     const val SSH_TOOLS_REVISION = 1
 
-    fun environmentDir(context: Context): File =
-        File(context.filesDir, "terminal/alpine")
-
-    fun rootfsDir(context: Context): File =
-        File(environmentDir(context), "rootfs")
-
-    fun artifactDir(context: Context): File =
-        File(context.cacheDir, "linux-installer/artifacts")
-
+    fun environmentDir(context: Context): File = File(context.filesDir, "terminal/alpine")
+    fun rootfsDir(context: Context): File = File(environmentDir(context), "rootfs")
+    fun artifactDir(context: Context): File = File(context.cacheDir, "linux-installer/artifacts")
     fun profileStagingDir(context: Context, profile: String): File =
         File(context.cacheDir, "linux-installer/profiles/$profile.installing")
 
     fun rootfsReady(rootfsPath: String?): Boolean {
         if (rootfsPath.isNullOrBlank()) return false
         val rootfs = File(rootfsPath)
-        // Alpine /bin/sh is an absolute link to /bin/busybox; inspect busybox itself outside chroot.
         return File(rootfs, READY_MARKER).isFile && File(rootfs, "bin/busybox").isFile
     }
 
@@ -43,9 +34,7 @@ internal object AlpineEnvironmentPaths {
         val marker = File(rootfsPath, COMMON_TOOLS_MARKER)
         if (!marker.isFile) return false
         return runCatching {
-            marker.useLines { lines ->
-                lines.any { line -> line.trim() == "toolset=$TOOLSET_REVISION" }
-            }
+            marker.useLines { lines -> lines.any { it.trim() == "toolset=$TOOLSET_REVISION" } }
         }.getOrDefault(false)
     }
 
