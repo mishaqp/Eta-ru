@@ -16,7 +16,7 @@ import org.json.JSONObject
  * account state required by UI and chooses enabled accounts round-robin for requests.
  */
 internal object CodexAccountRepository {
-    private const val USAGE_URL = "https://chatgpt.com/backend-api/codex/wham/usage"
+    private const val USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 
     @Volatile
     private var store: CodexCredentialStore? = null
@@ -93,6 +93,10 @@ internal object CodexAccountRepository {
         mutableState.value = CodexAccountState()
     }
 
+    /** Returns an enabled account for metadata calls without advancing round-robin. */
+    fun firstEnabledAccount(): CodexAccount? =
+        mutableState.value.normalized().accounts.firstOrNull(CodexAccount::enabled)
+
     /** Returns the next enabled account, rotating between accounts on each call. */
     fun nextEnabledAccount(): CodexAccount? {
         val current = mutableState.value.normalized()
@@ -107,6 +111,7 @@ internal object CodexAccountRepository {
     fun fetchUsageStatus(account: CodexAccount): CodexUsageStatus {
         val request = Request.Builder()
             .url(USAGE_URL)
+            .header("Accept", "application/json")
             .header("Authorization", "Bearer ${account.accessToken}")
             .header("ChatGPT-Account-ID", account.chatgptAccountId)
             .get()
