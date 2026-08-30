@@ -42,6 +42,10 @@ internal class AgentRuntimeClient(
         request: AgentRuntimeWire.RunRequest,
         onEvent: (AgentEvent) -> Unit
     ): AgentRuntimeWire.RunResult {
+        // A previous Runtime/UI process pair may have died after executing tools but before a
+        // terminal transcript was committed. Inject its durable safe progress ledger into the
+        // next request so the model continues from confirmed work instead of starting over.
+        val effectiveRequest = AgentInterruptedProgressStore.augmentRequest(context, request)
         val resultLatch = CountDownLatch(1)
         val resultRef = AtomicReference<AgentRuntimeWire.RunResult?>()
         val preparedImagesRef = AtomicReference<AgentRuntimeImageTransfer.PreparedImages?>()
@@ -74,18 +78,18 @@ internal class AgentRuntimeClient(
             lease.binder.linkToDeath(deathRecipient, 0)
             val msg = Message.obtain(null, AgentRuntimeWire.MSG_START_RUN)
             msg.replyTo = clientMessenger
-            val preparedImages = AgentRuntimeImageTransfer.prepare(context, request.images)
+            val preparedImages = AgentRuntimeImageTransfer.prepare(context, effectiveRequest.images)
             preparedImagesRef.set(preparedImages)
-            msg.data = AgentRuntimeWire.toBundle(request, preparedImages.images)
+            msg.data = AgentRuntimeWire.toBundle(effectiveRequest, preparedImages.images)
             serviceMessenger.send(msg)
             if (!resultLatch.await(RUN_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
                 runCatching {
                     val cancelMessage = Message.obtain(null, AgentRuntimeWire.MSG_CANCEL)
-                    cancelMessage.data = AgentRuntimeWire.ackBundle(request.runId)
+                    cancelMessage.data = AgentRuntimeWire.ackBundle(effectiveRequest.runId)
                     serviceMessenger.send(cancelMessage)
                 }
                 return AgentRuntimeWire.RunResult(
-                    runId = request.runId,
+                    runId = effectiveRequest.runId,
                     ok = false,
                     content = "",
                     error = "Agent Runtime 执行超时",
@@ -96,14 +100,14 @@ internal class AgentRuntimeClient(
             Thread.currentThread().interrupt()
             runCatching {
                 val cancelMessage = Message.obtain(null, AgentRuntimeWire.MSG_CANCEL)
-                cancelMessage.data = AgentRuntimeWire.ackBundle(request.runId)
+                cancelMessage.data = AgentRuntimeWire.ackBundle(effectiveRequest.runId)
                 serviceMessenger.send(cancelMessage)
             }
-            return AgentRuntimeWire.RunResult("", false, "", "Agent Runtime 等待被中断")
+            return AgentRuntimeWire.RunResult("", false, "", "Agent Runtime ожидание было прервано")
         } catch (throwable: Throwable) {
             logger.warn("Agent runtime start request failed: type=${throwable.safeLogType()}")
             return AgentRuntimeWire.RunResult(
-                runId = request.runId,
+                runId = effectiveRequest.runId,
                 ok = false,
                 content = "",
                 error = when (throwable) {
@@ -316,6 +320,8 @@ internal class AgentRuntimeClient(
 
     private companion object {
         const val RESPONSE_TIMEOUT_SECONDS = 8L
-        const val RUN_TIMEOUT_MINUTES = 30L
+        // Long autonomous device tests can legitimately run for much longer than 30 minutes.
+        // Keep a hard leak guard, but do not cancel healthy work in the middle of a long agent run.
+        const val RUN_TIMEOUT_MINUTES = 360L
     }
 }
