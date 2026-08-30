@@ -25,10 +25,7 @@ internal sealed interface PackageProfileInstallResult {
     data class Failed(val stage: PackageProfileInstallStage) : PackageProfileInstallResult
 }
 
-/**
- * 纯 apk 包组成的可选工具 profile。
- * legacyBinaries 用于识别拆分前已随基础工具集安装、没有独立 marker 的旧环境。
- */
+/** Optional tool profile composed of Alpine packages and an idempotent setup script. */
 internal data class AlpinePackageProfile(
     val id: String,
     val markerName: String,
@@ -49,6 +46,7 @@ internal object AlpinePackageProfiles {
         setupScript = "ln -sf /usr/bin/python3 /usr/local/bin/python",
         legacyBinaries = listOf("usr/bin/python3", "usr/bin/uv"),
     )
+
     val NODE = AlpinePackageProfile(
         id = "node",
         markerName = AlpineEnvironmentPaths.NODE_TOOLS_MARKER,
@@ -56,19 +54,32 @@ internal object AlpinePackageProfiles {
         packages = listOf("nodejs", "npm"),
         verifyCommands = listOf("node --version", "npm --version"),
     )
+
+    val CODEX = AlpinePackageProfile(
+        id = "codex",
+        markerName = AlpineEnvironmentPaths.CODEX_TOOLS_MARKER,
+        revision = AlpineEnvironmentPaths.CODEX_TOOLS_REVISION,
+        packages = listOf("nodejs", "npm"),
+        verifyCommands = listOf("node --version", "npm --version", "codex --version"),
+        setupScript = """
+            npm install --global @openai/codex
+            mkdir -p /root/.codex
+        """.trimIndent(),
+    )
+
     val SSH = AlpinePackageProfile(
         id = "ssh",
         markerName = AlpineEnvironmentPaths.SSH_TOOLS_MARKER,
         revision = AlpineEnvironmentPaths.SSH_TOOLS_REVISION,
         packages = listOf("openssh"),
         verifyCommands = listOf("command -v sshd", "command -v ssh-keygen"),
-        // 提前生成主机密钥，sshd 首次启动即可用。
         setupScript = "ssh-keygen -A >/dev/null 2>&1 || true",
     )
-    val ALL = listOf(PYTHON, NODE, SSH)
+
+    val ALL = listOf(PYTHON, NODE, CODEX, SSH)
 }
 
-/** 按需安装单个 apk 工具 profile；验证通过才写完成标记，失败重试可重入。 */
+/** Installs one optional profile and writes the completion marker only after verification. */
 internal class AlpinePackageProfileInstaller(
     private val context: Context,
     private val profile: AlpinePackageProfile,
@@ -157,7 +168,6 @@ internal class AlpinePackageProfileInstaller(
 
     companion object {
         private const val INSTALL_TIMEOUT_SECONDS = 600L
-
         private val installMutex = Mutex()
     }
 }
