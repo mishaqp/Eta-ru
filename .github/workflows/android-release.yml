@@ -1,6 +1,9 @@
 name: Eta Build (single signed APK)
 
 on:
+  push:
+    branches:
+      - feat/codex-provider-ui
   workflow_dispatch:
 
 permissions:
