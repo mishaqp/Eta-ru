@@ -71,6 +71,31 @@ class AgentModelPickerProjectorTest {
     }
 
     @Test
+    fun project_showsCodexOAuthProviderWithoutApiKey() {
+        val codexModel = model(
+            id = "codex-model",
+            modelId = "gpt-5.1-codex",
+            displayName = "GPT-5.1 Codex",
+        )
+        val result = AgentModelPickerProjector.project(
+            providers = listOf(
+                provider(
+                    id = "codex",
+                    name = "Codex",
+                    sourceType = ProviderSourceTypes.CODEX,
+                    apiKey = "",
+                    models = listOf(codexModel),
+                ),
+            ),
+            selectedProviderId = null,
+            selectedModelId = null,
+        )
+
+        assertEquals(listOf("codex"), result.providerGroups.map { it.providerId })
+        assertEquals(listOf("gpt-5.1-codex"), result.providerGroups.single().models.map { it.modelId })
+    }
+
+    @Test
     fun providerGroups_expandCurrentByDefault() {
         val selected = AgentModelOptionUi(
             id = "model",
