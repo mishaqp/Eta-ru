@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,6 +58,9 @@ internal fun CodexProviderDetailScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val oauth = remember(context, scope) { CodexOAuthManager(context, scope) }
+    DisposableEffect(oauth) {
+        onDispose { oauth.close() }
+    }
     val oauthStatus by oauth.status.collectAsState()
     val accountState by CodexAccountRepository.state.collectAsState()
     val providers by ProviderRepository.providersFlow().collectAsState(initial = emptyList())
