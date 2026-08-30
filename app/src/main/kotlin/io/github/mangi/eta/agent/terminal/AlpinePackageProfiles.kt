@@ -7,16 +7,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 
-internal enum class PackageProfileInstallStage {
-    CHECKING,
-    INSTALLING,
-    VERIFYING,
-    COMPLETE,
-}
+internal enum class PackageProfileInstallStage { CHECKING, INSTALLING, VERIFYING, COMPLETE }
 
-internal data class PackageProfileInstallProgress(
-    val stage: PackageProfileInstallStage,
-)
+internal data class PackageProfileInstallProgress(val stage: PackageProfileInstallStage)
 
 internal sealed interface PackageProfileInstallResult {
     data object AlreadyReady : PackageProfileInstallResult
@@ -25,7 +18,6 @@ internal sealed interface PackageProfileInstallResult {
     data class Failed(val stage: PackageProfileInstallStage) : PackageProfileInstallResult
 }
 
-/** Optional tool profile composed of Alpine packages and an idempotent setup script. */
 internal data class AlpinePackageProfile(
     val id: String,
     val markerName: String,
@@ -47,18 +39,11 @@ internal object AlpinePackageProfiles {
         legacyBinaries = listOf("usr/bin/python3", "usr/bin/uv"),
     )
 
+    /** Node profile also installs Codex CLI so it is immediately usable in Eta Linux sessions. */
     val NODE = AlpinePackageProfile(
         id = "node",
         markerName = AlpineEnvironmentPaths.NODE_TOOLS_MARKER,
         revision = AlpineEnvironmentPaths.NODE_TOOLS_REVISION,
-        packages = listOf("nodejs", "npm"),
-        verifyCommands = listOf("node --version", "npm --version"),
-    )
-
-    val CODEX = AlpinePackageProfile(
-        id = "codex",
-        markerName = AlpineEnvironmentPaths.CODEX_TOOLS_MARKER,
-        revision = AlpineEnvironmentPaths.CODEX_TOOLS_REVISION,
         packages = listOf("nodejs", "npm"),
         verifyCommands = listOf("node --version", "npm --version", "codex --version"),
         setupScript = """
@@ -76,19 +61,17 @@ internal object AlpinePackageProfiles {
         setupScript = "ssh-keygen -A >/dev/null 2>&1 || true",
     )
 
-    val ALL = listOf(PYTHON, NODE, CODEX, SSH)
+    val ALL = listOf(PYTHON, NODE, SSH)
 }
 
-/** Installs one optional profile and writes the completion marker only after verification. */
 internal class AlpinePackageProfileInstaller(
     private val context: Context,
     private val profile: AlpinePackageProfile,
 ) {
-    fun isReady(): Boolean =
-        AlpineEnvironmentPaths.packageProfileReady(
-            AlpineEnvironmentPaths.rootfsDir(context).absolutePath,
-            profile,
-        )
+    fun isReady(): Boolean = AlpineEnvironmentPaths.packageProfileReady(
+        AlpineEnvironmentPaths.rootfsDir(context).absolutePath,
+        profile,
+    )
 
     suspend fun install(
         onProgress: suspend (PackageProfileInstallProgress) -> Unit = {},
