@@ -1,0 +1,76 @@
+name: Generate Russian Android localization
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Generate values-ru strings
+        env:
+          SOURCE: app/src/main/res/values-b+zh+Hans/strings.xml
+          TARGET: app/src/main/res/values-ru/strings.xml
+        run: |
+          python3 - <<'PY'
+          import json, os, re, time, urllib.parse, urllib.request
+          import xml.etree.ElementTree as ET
+
+          source, target = os.environ['SOURCE'], os.environ['TARGET']
+          token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
+          cache = {}
+
+          def translate(text):
+              if not text or not re.search(r'[\u3400-\u9fff]', text):
+                  return text
+              if text in cache:
+                  return cache[text]
+              protected = []
+              def protect(match):
+                  protected.append(match.group(0))
+                  return f'ZXQPLACEHOLDER{len(protected)-1}QXZ'
+              query = token_re.sub(protect, text)
+              url = 'https://translate.googleapis.com/translate_a/single?' + urllib.parse.urlencode({
+                  'client': 'gtx', 'sl': 'zh-CN', 'tl': 'ru', 'dt': 't', 'q': query
+              })
+              for attempt in range(6):
+                  try:
+                      with urllib.request.urlopen(url, timeout=30) as response:
+                          translated = ''.join(part[0] for part in json.loads(response.read().decode('utf-8'))[0])
+                      for index, value in enumerate(protected):
+                          translated = translated.replace(f'ZXQPLACEHOLDER{index}QXZ', value)
+                      cache[text] = translated
+                      return translated
+                  except Exception as error:
+                      if attempt == 5:
+                          raise error
+                      time.sleep(2 * (attempt + 1))
+
+          tree = ET.parse(source)
+          root = tree.getroot()
+          total = 0
+          for element in root.iter():
+              if element.text:
+                  element.text = translate(element.text)
+                  total += 1
+              if element.tail and element.tail.strip():
+                  element.tail = translate(element.tail)
+          os.makedirs(os.path.dirname(target), exist_ok=True)
+          tree.write(target, encoding='utf-8', xml_declaration=True)
+          print(f'Translated {total} XML text nodes into {target}')
+          PY
+
+      - name: Commit localization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/res/values-ru/strings.xml
+          git diff --cached --quiet || git commit -m "feat: add Russian localization"
+          git push
