@@ -2,6 +2,7 @@ package io.github.mangi.eta.ui.pages.providers
 import io.github.mangi.eta.R
 import androidx.compose.ui.res.stringResource
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,7 @@ import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.ProviderSourceTypes
 import io.github.mangi.eta.data.model.typeLabel
+import io.github.mangi.eta.data.provider.BuiltinProviders
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.ui.components.MiuixDialogActions
@@ -55,6 +57,13 @@ internal fun ModelProviderListScreen(
     val selectedProviderId by RuntimeConfigRepository.selectedProviderIdFlow().collectAsState(initial = null)
     var searchQuery by remember { mutableStateOf("") }
     var providerToDelete by remember { mutableStateOf<ProviderSetting?>(null) }
+    var codexDetailOpen by remember { mutableStateOf(false) }
+
+    if (codexDetailOpen) {
+        BackHandler { codexDetailOpen = false }
+        CodexProviderDetailScreen(onBack = { codexDetailOpen = false })
+        return
+    }
 
     LaunchedEffect(Unit) {
         RuntimeConfigRepository.ensureDefaults(EtaApp.serviceInstance)
@@ -133,7 +142,13 @@ internal fun ModelProviderListScreen(
                         ProviderListItem(
                             provider = provider,
                             isSelected = provider.id == selectedProviderId,
-                            onOpen = { onNavigate(AppRoute.ModelProviderDetail(provider.id)) },
+                            onOpen = {
+                                if (provider.id == BuiltinProviders.CODEX_ID) {
+                                    codexDetailOpen = true
+                                } else {
+                                    onNavigate(AppRoute.ModelProviderDetail(provider.id))
+                                }
+                            },
                             onDelete = if (!provider.isBuiltIn) {
                                 { providerToDelete = provider }
                             } else {
