@@ -13,8 +13,6 @@ import io.github.mangi.eta.core.safeLogType
 import io.github.mangi.eta.hook.aimemory.ColorOsMemoryHooks
 import io.github.mangi.eta.hook.breeno.BreenoHooks
 import io.github.mangi.eta.hook.colordirect.ColorDirectHooks
-import io.github.mangi.eta.hook.google.GoogleAppHooks
-import io.github.mangi.eta.hook.google.GoogleEligibilityHooks
 import io.github.mangi.eta.hook.system.SystemServerHooks
 import io.github.mangi.eta.hook.system.SystemUiHooks
 import io.github.mangi.eta.hook.xiaoai.XiaoAiHooks
@@ -56,20 +54,6 @@ class ModuleMain : XposedModule() {
             ModuleConfig.SYSTEM_UI_PACKAGE -> {
                 if (currentProcessName == ModuleConfig.SYSTEM_UI_PACKAGE) {
                     recordInstallation(SystemUiHooks.install(this, logger, param.classLoader))
-                }
-            }
-
-            ModuleConfig.GOOGLE_PACKAGE -> {
-                if (isCurrentPackageProcess(ModuleConfig.GOOGLE_PACKAGE)) {
-                    recordInstallation(
-                        HookInstallation.combine(
-                            group = "Google",
-                            installations = listOf(
-                                GoogleEligibilityHooks.install(this, logger, param.classLoader),
-                                GoogleAppHooks.install(this, logger, param.classLoader)
-                            )
-                        )
-                    )
                 }
             }
 
@@ -119,7 +103,6 @@ class ModuleMain : XposedModule() {
         if (param.isSystemServer) return true
         val processName = param.processName
         return processName == ModuleConfig.SYSTEM_UI_PACKAGE ||
-            isPackageProcess(processName, ModuleConfig.GOOGLE_PACKAGE) ||
             isPackageProcess(processName, ModuleConfig.COLOR_DIRECT_PACKAGE) ||
             isPackageProcess(processName, ModuleConfig.BREENO_PACKAGE) ||
             processName == ModuleConfig.COLOROS_MEMORY_PACKAGE ||
