@@ -44,7 +44,8 @@ internal class CodexOAuthManager(
     @Volatile private var callbackPort: Int? = null
 
     private val _status = MutableStateFlow<CodexOAuthStatus>(
-        store.read().account?.let(CodexOAuthStatus::SignedIn) ?: CodexOAuthStatus.Idle,
+        store.read().allAccounts().firstOrNull()?.let(CodexOAuthStatus::SignedIn)
+            ?: CodexOAuthStatus.Idle,
     )
     val status: StateFlow<CodexOAuthStatus> = _status.asStateFlow()
 
@@ -81,6 +82,7 @@ internal class CodexOAuthManager(
 
     fun logout() {
         store.clear()
+        CodexAccountRepository.reload()
         _status.value = CodexOAuthStatus.Idle
     }
 
@@ -126,7 +128,8 @@ internal class CodexOAuthManager(
             else -> scope.launch(Dispatchers.IO) {
                 runCatching { exchangeCode(code, session) }
                     .onSuccess { account ->
-                        store.write(CodexAccountState(account))
+                        store.write(CodexAccountState(account = account))
+                        CodexAccountRepository.reload()
                         _status.value = CodexOAuthStatus.SignedIn(account)
                     }
                     .onFailure { failure ->
