@@ -280,7 +280,7 @@ internal object AgentConversationStore {
                 SystemNoticeMessageUi(
                     id = id,
                     code = code,
-                    detail = resultSummary,
+                    detail = resultSummary?.let { AgentRuntimeTraceLocalization.localize(it) },
                 )
             }
 
@@ -296,9 +296,9 @@ internal object AgentConversationStore {
                 id = id,
                 toolName = toolName.orEmpty(),
                 status = toolStatus.orEmpty().toToolStatus(),
-                argumentsSummary = argumentsSummary.orEmpty(),
+                argumentsSummary = AgentRuntimeTraceLocalization.localize(argumentsSummary.orEmpty()),
                 command = content.takeIf(String::isNotBlank),
-                resultSummary = resultSummary,
+                resultSummary = resultSummary?.let { AgentRuntimeTraceLocalization.localize(it) },
                 imageCount = imageCount,
             )
 
