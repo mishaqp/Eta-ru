@@ -98,8 +98,19 @@ internal object AgentRunCheckpointStore {
 
     fun remove(context: Context, runId: String) {
         if (runId.isBlank()) return
+        val appContext = context.applicationContext
+        // Interrupted/cancelled UI runs used to lose their only durable execution journal here.
+        // Archive the safe checkpoint projection before deleting the in-flight rows. Completed
+        // runs are removed by RuntimeRunDao.acknowledgeRuntimeResult() and do not pass this path.
+        list(appContext)
+            .firstOrNull { it.runId == runId }
+            ?.let { checkpoint ->
+                runCatching {
+                    AgentInterruptedProgressStore.archiveBeforeRemoval(appContext, checkpoint)
+                }
+            }
         runBlocking(Dispatchers.IO) {
-            EtaDatabase.get(context.applicationContext)
+            EtaDatabase.get(appContext)
                 .runtimeRunDao()
                 .deleteInFlightRun(runId)
         }
