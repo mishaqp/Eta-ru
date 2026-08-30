@@ -88,8 +88,19 @@ internal class CodexOAuthManager(
         _status.value = CodexOAuthStatus.Idle
     }
 
+    /** Release the loopback callback socket/thread when the Codex screen leaves composition. */
+    fun close() {
+        sessions.clear()
+        callbackPort = null
+        val server = callbackServer
+        callbackServer = null
+        runCatching { server?.close() }
+        executor.shutdownNow()
+    }
+
     private fun ensureCallbackServer(): Int {
         callbackPort?.let { return it }
+        check(!executor.isShutdown) { "OAuth callback manager уже закрыт" }
         var failure: Throwable? = null
         for (port in CALLBACK_PORTS) {
             try {
