@@ -1,6 +1,11 @@
 name: Bootstrap signing key and release APK
 
 on:
+  push:
+    branches:
+      - feat/russian-localization
+    paths:
+      - .github/workflows/bootstrap-release.yml
   workflow_dispatch:
 
 permissions:
