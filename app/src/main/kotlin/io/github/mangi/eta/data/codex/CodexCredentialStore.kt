@@ -27,11 +27,34 @@ internal class CodexCredentialStore(
             val encrypted = bytes.copyOfRange(IV_SIZE, bytes.size)
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_LENGTH_BITS, iv))
-            json.decodeFromString(CodexAccountState.serializer(), cipher.doFinal(encrypted).decodeToString())
+            json.decodeFromString(
+                CodexAccountState.serializer(),
+                cipher.doFinal(encrypted).decodeToString(),
+            ).normalized()
         }.getOrDefault(CodexAccountState())
     }
 
     fun write(state: CodexAccountState) {
+        // Old OAuthManager writes CodexAccountState(account = ...). Treat that shape as
+        // an upsert so signing in with a second account never erases the first one.
+        val normalized = if (state.account != null && state.accounts.isEmpty()) {
+            val current = read().normalized()
+            val incoming = state.account
+            current.copy(
+                accounts = current.accounts
+                    .filterNot { it.chatgptAccountId == incoming.chatgptAccountId } + incoming,
+            ).normalized()
+        } else {
+            state.normalized()
+        }
+        writeEncrypted(normalized)
+    }
+
+    fun clear() {
+        file.delete()
+    }
+
+    private fun writeEncrypted(state: CodexAccountState) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val encrypted = cipher.doFinal(
@@ -41,10 +64,6 @@ internal class CodexCredentialStore(
         temporary.writeBytes(cipher.iv + encrypted)
         temporary.copyTo(file, overwrite = true)
         temporary.delete()
-    }
-
-    fun clear() {
-        file.delete()
     }
 
     private fun key(): SecretKey {
