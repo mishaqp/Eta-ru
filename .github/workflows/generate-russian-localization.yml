@@ -40,22 +40,19 @@ jobs:
           token_re = re.compile(r'%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z]|\\[nrt\\\'\"]|https?://[^\s]+')
 
           def install_pair(source_code, target_code):
-              installed = argostranslate.translate.get_installed_languages()
-              if any(language.code == source_code and any(to.code == target_code for to in language.translations) for language in installed):
-                  return
               packages = argostranslate.package.get_available_packages()
               package = next((item for item in packages if item.from_code == source_code and item.to_code == target_code), None)
               if package is None:
-                  raise RuntimeError(f'Argos package {source_code}->{target_code} is unavailable')
+                  available = sorted({f'{item.from_code}->{item.to_code}' for item in packages})
+                  raise RuntimeError(f'Argos package {source_code}->{target_code} is unavailable. Available: {available}')
+              print(f'Installing Argos model {source_code}->{target_code}')
               argostranslate.package.install_from_path(package.download())
 
+          # The Argos catalog has no direct zh->ru model. Install its supported
+          # Chinese-to-English and English-to-Russian models; Argos composes them.
           argostranslate.package.update_package_index()
-          try:
-              install_pair('zh', 'ru')
-          except RuntimeError:
-              # Argos can transparently use the installed English pivot.
-              install_pair('zh', 'en')
-              install_pair('en', 'ru')
+          install_pair('zh', 'en')
+          install_pair('en', 'ru')
 
           def mask(text):
               values = []
@@ -66,8 +63,7 @@ jobs:
 
           def restore(text, values):
               for index, value in enumerate(values):
-                  token = f'__ETA_PH_{index}__'
-                  text = text.replace(token, value)
+                  text = text.replace(f'__ETA_PH_{index}__', value)
               return text
 
           tree = ET.parse(source)
