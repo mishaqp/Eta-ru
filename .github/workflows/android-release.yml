@@ -1,6 +1,9 @@
 name: Eta Build (single signed APK)
 
 on:
+  push:
+    branches:
+      - eta-build
   workflow_dispatch:
 
 permissions:
