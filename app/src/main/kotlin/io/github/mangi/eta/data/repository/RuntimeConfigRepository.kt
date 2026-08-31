@@ -6,7 +6,6 @@ import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.codex.CodexAccountRepository
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
-import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.CustomBody
 import io.github.mangi.eta.data.model.CustomHeader
 import io.github.mangi.eta.data.model.CustomProviderSetting
@@ -78,7 +77,6 @@ internal object RuntimeConfigRepository {
         val profile = assistantId
             ?.trim()
             ?.takeIf(String::isNotBlank)
-            ?.takeUnless { it == AssistantProfileDefaults.DEFAULT_ID }
             ?.let { id -> runCatching { AssistantProfileRepository.profileById(id) }.getOrNull() }
             ?.takeIf { it.enabled }
         val provider = profile?.providerId

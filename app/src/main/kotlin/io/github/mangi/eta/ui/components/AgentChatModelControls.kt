@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.R as LucideR
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
 import io.github.mangi.eta.ui.model.AgentModelOptionUi
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
@@ -57,6 +58,98 @@ import top.yukonga.miuix.kmp.basic.rememberTooltipState
 import top.yukonga.miuix.kmp.overlay.OverlayListPopup
 import top.yukonga.miuix.kmp.squircle.squircleSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+@Composable
+internal fun AgentAssistantPickerButton(
+    profiles: List<AssistantProfile>,
+    selectedAssistantId: String,
+    isStreaming: Boolean,
+    popupAnchorTopPx: Int,
+    popupMaxHeight: Dp,
+    onAssistantSelected: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val enabledProfiles = remember(profiles) { profiles.filter { it.enabled } }
+    if (enabledProfiles.isEmpty()) return
+    var showPopup by remember { mutableStateOf(false) }
+    val selected = enabledProfiles.firstOrNull { it.id == selectedAssistantId }
+        ?: enabledProfiles.first()
+    val enabled = !isStreaming && enabledProfiles.size > 1
+    LaunchedEffect(enabled) {
+        if (!enabled) showPopup = false
+    }
+    val density = LocalDensity.current
+    val popupWindowInsetPx = with(density) { 14.dp.roundToPx() }
+    val popupPositionProvider = remember(popupAnchorTopPx, popupWindowInsetPx) {
+        InputPopupPositionProvider(
+            inputContainerTopPx = popupAnchorTopPx,
+            windowHorizontalInsetPx = popupWindowInsetPx,
+        )
+    }
+    Box(modifier = modifier) {
+        IconButton(
+            onClick = { showPopup = true },
+            enabled = enabled,
+            minWidth = ChatInputActionSize,
+            minHeight = ChatInputActionSize,
+            modifier = Modifier.semantics {
+                contentDescription = selected.name
+            },
+        ) {
+            Icon(
+                painter = painterResource(LucideR.drawable.lucide_ic_bot),
+                contentDescription = null,
+                modifier = Modifier.size(ChatInputActionIconSize),
+                tint = if (enabled) {
+                    MiuixTheme.colorScheme.primary
+                } else {
+                    MiuixTheme.colorScheme.onSurfaceVariantSummary
+                },
+            )
+        }
+        OverlayListPopup(
+            show = showPopup && enabled && popupAnchorTopPx > 0,
+            popupPositionProvider = popupPositionProvider,
+            alignment = PopupPositionProvider.Align.TopEnd,
+            enableWindowDim = false,
+            onDismissRequest = { showPopup = false },
+            maxHeight = popupMaxHeight,
+            minWidth = 236.dp,
+        ) {
+            ListPopupColumn {
+                enabledProfiles.forEach { profile ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showPopup = false
+                                onAssistantSelected(profile.id)
+                            }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = profile.name,
+                            style = MiuixTheme.textStyles.body2,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (profile.id == selected.id) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                painter = painterResource(LucideR.drawable.lucide_ic_check),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MiuixTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 internal fun AgentModelPickerButton(

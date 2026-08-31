@@ -185,6 +185,7 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.LinuxEnvironment -> stringResource(R.string.route_linux_environment)
     is AppRoute.Terminal -> stringResource(R.string.terminal_title)
     is AppRoute.ModelProviders -> stringResource(R.string.route_model_providers)
+    is AppRoute.Assistants -> stringResource(R.string.route_assistants)
     is AppRoute.McpServers -> stringResource(R.string.route_mcp_servers)
     is AppRoute.McpServerDetail -> stringResource(R.string.route_mcp_server_detail)
     is AppRoute.ModelProviderDetail -> stringResource(R.string.route_provider_details)

@@ -8,6 +8,7 @@ import io.github.mangi.eta.ui.components.chatConversationCompositionKey
 import io.github.mangi.eta.ui.model.AgentChatAction
 import io.github.mangi.eta.ui.model.AgentChatUiState
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
+import io.github.mangi.eta.data.model.AssistantProfile
 
 /**
  * 独立对话页：与首页聊天主舞台共用同一套消息/输入组件，
@@ -17,6 +18,8 @@ import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 internal fun AgentChatScreen(
     state: AgentChatUiState,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     conversationKey: String?,
     onAction: (AgentChatAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -25,6 +28,8 @@ internal fun AgentChatScreen(
         AgentChatBody(
             messages = state.messages,
             modelPickerState = modelPickerState,
+            assistantProfiles = assistantProfiles,
+            selectedAssistantId = selectedAssistantId,
             input = state.input,
             isStreaming = state.isStreaming,
             reasoningEffort = state.reasoningEffort,
@@ -34,6 +39,7 @@ internal fun AgentChatScreen(
             messageEdit = state.messageEdit,
             onReasoningEffortChange = { onAction(AgentChatAction.ReasoningEffortChanged(it)) },
             onModelSelected = { onAction(AgentChatAction.ModelSelected(it)) },
+            onAssistantSelected = { onAction(AgentChatAction.AssistantSelected(it)) },
             onSubmit = { text -> onAction(AgentChatAction.SubmitMessage(text)) },
             onStop = { onAction(AgentChatAction.StopRun) },
             onAttachImage = { uri -> onAction(AgentChatAction.ImageAttached(uri)) },

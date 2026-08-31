@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.R as LucideR
 import io.github.mangi.eta.agent.browser.AgentBrowserSession
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
 import io.github.mangi.eta.ui.model.AgentMessageUi
@@ -119,6 +120,8 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 internal fun AgentChatBody(
     messages: List<AgentChatMessageUi>,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     input: String,
     isStreaming: Boolean,
     reasoningEffort: ReasoningEffort,
@@ -127,6 +130,7 @@ internal fun AgentChatBody(
     pendingFileReferences: List<PendingFileReferenceUi>,
     messageEdit: MessageEditUiState?,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onAssistantSelected: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onSubmit: (String) -> Unit,
     onStop: () -> Unit,
@@ -205,6 +209,8 @@ internal fun AgentChatBody(
         scrollState = scrollState,
         input = input,
         modelPickerState = modelPickerState,
+        assistantProfiles = assistantProfiles,
+        selectedAssistantId = selectedAssistantId,
         contextUsage = contextUsage,
         isStreaming = isStreaming,
         reasoningEffort = reasoningEffort,
@@ -223,6 +229,7 @@ internal fun AgentChatBody(
             onSubmit(text)
         },
         onReasoningEffortChange = onReasoningEffortChange,
+        onAssistantSelected = onAssistantSelected,
         onModelSelected = onModelSelected,
         onStop = onStop,
         onAttachImage = onAttachImage,
@@ -251,6 +258,8 @@ private fun AgentChatScaffold(
     scrollState: LazyListState,
     input: String,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     contextUsage: AgentContextUsageUi,
     isStreaming: Boolean,
     reasoningEffort: ReasoningEffort,
@@ -263,6 +272,7 @@ private fun AgentChatScaffold(
     onBottomAnchorChanged: (Boolean) -> Unit,
     onSubmit: (String) -> Unit,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onAssistantSelected: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onStop: () -> Unit,
     onAttachImage: (String) -> Unit,
@@ -303,6 +313,8 @@ private fun AgentChatScaffold(
                 messageBackdrop = messageBackdrop.takeIf { frostEnabled },
                 input = input,
                 modelPickerState = modelPickerState,
+                assistantProfiles = assistantProfiles,
+                selectedAssistantId = selectedAssistantId,
                 contextUsage = contextUsage,
                 showContextUsage = hasMessages,
                 isStreaming = isStreaming,
@@ -313,6 +325,7 @@ private fun AgentChatScaffold(
                 messageEdit = messageEdit,
                 onSubmit = onSubmit,
                 onReasoningEffortChange = onReasoningEffortChange,
+                onAssistantSelected = onAssistantSelected,
                 onModelSelected = onModelSelected,
                 onStop = onStop,
                 onAttachImage = onAttachImage,
@@ -778,6 +791,8 @@ private fun AgentChatBottomBar(
     messageBackdrop: LayerBackdrop?,
     input: String,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     contextUsage: AgentContextUsageUi,
     showContextUsage: Boolean,
     isStreaming: Boolean,
@@ -788,6 +803,7 @@ private fun AgentChatBottomBar(
     messageEdit: MessageEditUiState?,
     onSubmit: (String) -> Unit,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onAssistantSelected: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onStop: () -> Unit,
     onAttachImage: (String) -> Unit,
@@ -859,6 +875,8 @@ private fun AgentChatBottomBar(
             AgentChatInputBar(
                 input = input,
                 modelPickerState = modelPickerState,
+                assistantProfiles = assistantProfiles,
+                selectedAssistantId = selectedAssistantId,
                 contextUsage = contextUsage,
                 showContextUsage = showContextUsage,
                 isStreaming = isStreaming,
@@ -870,6 +888,7 @@ private fun AgentChatBottomBar(
                 editHasLaterTurns = messageEdit?.hasLaterTurns == true,
                 onSubmit = onSubmit,
                 onReasoningEffortChange = onReasoningEffortChange,
+                onAssistantSelected = onAssistantSelected,
                 onModelSelected = onModelSelected,
                 onStop = onStop,
                 onAttachImage = onAttachImage,

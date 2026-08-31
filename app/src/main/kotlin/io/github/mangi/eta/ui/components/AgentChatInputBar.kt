@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.R as LucideR
 import io.github.mangi.eta.data.model.ReasoningEffort
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.PendingFileReferenceUi
@@ -98,6 +99,8 @@ private val InputContainerShape = RoundedCornerShape(20.dp)
 internal fun AgentChatInputBar(
     input: String,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     contextUsage: AgentContextUsageUi,
     showContextUsage: Boolean,
     isStreaming: Boolean,
@@ -108,6 +111,7 @@ internal fun AgentChatInputBar(
     isEditingMessage: Boolean,
     editHasLaterTurns: Boolean,
     onReasoningEffortChange: (ReasoningEffort) -> Unit,
+    onAssistantSelected: (String) -> Unit,
     onModelSelected: (String) -> Unit,
     onSubmit: (String) -> Unit,
     onStop: () -> Unit,
@@ -307,6 +311,19 @@ internal fun AgentChatInputBar(
 
                         if (showContextUsage) {
                             AgentContextUsageButton(usage = contextUsage)
+
+                            Spacer(modifier = Modifier.width(2.dp))
+                        }
+
+                        if (assistantProfiles.isNotEmpty()) {
+                            AgentAssistantPickerButton(
+                                profiles = assistantProfiles,
+                                selectedAssistantId = selectedAssistantId,
+                                isStreaming = isStreaming,
+                                popupAnchorTopPx = inputContainerTopPx,
+                                popupMaxHeight = thinkingPopupMaxHeight,
+                                onAssistantSelected = onAssistantSelected,
+                            )
 
                             Spacer(modifier = Modifier.width(2.dp))
                         }

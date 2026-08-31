@@ -5,6 +5,7 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import io.github.mangi.eta.ui.components.AgentChatBody
 import io.github.mangi.eta.ui.components.chatConversationCompositionKey
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.ui.model.AgentChatHomeUiState
 import io.github.mangi.eta.ui.model.AgentHomeAction
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
@@ -19,6 +20,8 @@ import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 internal fun AgentHomeScreen(
     state: AgentChatHomeUiState,
     modelPickerState: AgentModelPickerUiState,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
     conversationKey: String?,
     onAction: (AgentHomeAction) -> Unit,
     isDrawerOpen: Boolean = false,
@@ -28,6 +31,8 @@ internal fun AgentHomeScreen(
         AgentChatBody(
             messages = state.messages,
             modelPickerState = modelPickerState,
+            assistantProfiles = assistantProfiles,
+            selectedAssistantId = selectedAssistantId,
             input = state.input,
             isStreaming = state.isStreaming,
             reasoningEffort = state.reasoningEffort,
@@ -37,6 +42,7 @@ internal fun AgentHomeScreen(
             messageEdit = state.messageEdit,
             onReasoningEffortChange = { onAction(AgentHomeAction.ReasoningEffortChanged(it)) },
             onModelSelected = { onAction(AgentHomeAction.ModelSelected(it)) },
+            onAssistantSelected = { onAction(AgentHomeAction.AssistantSelected(it)) },
             onSubmit = { text -> onAction(AgentHomeAction.SubmitMessage(text)) },
             onStop = { onAction(AgentHomeAction.StopRun) },
             onAttachImage = { uri -> onAction(AgentHomeAction.ImageAttached(uri)) },

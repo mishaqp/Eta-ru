@@ -198,6 +198,18 @@ internal fun SettingsScreen(
                         onClick = { onNavigate(AppRoute.ModelProviders) },
                     )
                     PrefDivider()
+                    ArrowPreference(
+                        title = stringResource(R.string.route_assistants),
+                        summary = stringResource(R.string.assistant_profiles_settings_summary),
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_bot,
+                                tint = PixelRoyalBlue,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.Assistants) },
+                    )
+                    PrefDivider()
                     SwitchPref(
                         context = context,
                         prefs = agentPrefs,

@@ -66,6 +66,7 @@ import io.github.mangi.eta.ui.screens.enhance.SystemEnhanceScreen
 import io.github.mangi.eta.ui.screens.home.AgentHomeScreen
 import io.github.mangi.eta.ui.screens.memory.AgentMemoryScreen
 import io.github.mangi.eta.ui.screens.tasks.AgentTasksScreen
+import io.github.mangi.eta.ui.screens.assistants.AssistantProfilesScreen
 import io.github.mangi.eta.ui.screens.mcp.McpServerDetailScreen
 import io.github.mangi.eta.ui.screens.mcp.McpServersScreen
 import io.github.mangi.eta.ui.screens.permissions.PermissionHealthScreen
@@ -208,11 +209,15 @@ fun AgentAppRoot(
                     AgentHomeScreen(
                         state = agentState.homeState,
                         modelPickerState = agentState.modelPickerState,
+                        assistantProfiles = agentState.assistantProfiles,
+                        selectedAssistantId = agentState.selectedAssistantId,
                         conversationKey = agentState.conversationPaneState.selectedConversationId,
                         onAction = { action ->
                             when (action) {
                                 is AgentHomeAction.ReasoningEffortChanged ->
                                     agentState.updateReasoningEffort(action.effort)
+                                is AgentHomeAction.AssistantSelected ->
+                                    agentState.selectAssistant(action.assistantId)
                                 is AgentHomeAction.ModelSelected -> agentState.selectModel(action.modelId)
                                 is AgentHomeAction.SubmitMessage -> agentState.sendCurrentMessage(action.text)
                                 AgentHomeAction.StopRun -> agentState.stopCurrentRun()
@@ -256,12 +261,16 @@ fun AgentAppRoot(
                     AgentChatScreen(
                         state = agentState.homeState,
                         modelPickerState = agentState.modelPickerState,
+                        assistantProfiles = agentState.assistantProfiles,
+                        selectedAssistantId = agentState.selectedAssistantId,
                         conversationKey = agentState.conversationPaneState.selectedConversationId,
                         onAction = { action ->
                             when (action) {
                                 AgentChatAction.NavigateBack -> popRoute()
                                 is AgentChatAction.ReasoningEffortChanged ->
                                     agentState.updateReasoningEffort(action.effort)
+                                is AgentChatAction.AssistantSelected ->
+                                    agentState.selectAssistant(action.assistantId)
                                 is AgentChatAction.ModelSelected -> agentState.selectModel(action.modelId)
                                 is AgentChatAction.SubmitMessage -> agentState.sendCurrentMessage(action.text)
                                 AgentChatAction.StopRun -> agentState.stopCurrentRun()
@@ -494,6 +503,9 @@ fun AgentAppRoot(
                     onNavigate = { route -> pushRoute(route) },
                     onBack = ::popRoute
                 )
+            }
+            entry<AppRoute.Assistants>(swipeDismiss = swipeDismiss) {
+                AssistantProfilesScreen(onBack = ::popRoute)
             }
             entry<AppRoute.McpServers>(swipeDismiss = swipeDismiss) {
                 McpServersScreen(

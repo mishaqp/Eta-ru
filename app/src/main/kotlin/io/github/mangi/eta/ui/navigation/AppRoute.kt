@@ -51,6 +51,9 @@ sealed interface AppRoute : NavKey {
     data object ModelProviders : AppRoute
 
     @Serializable
+    data object Assistants : AppRoute
+
+    @Serializable
     data object McpServers : AppRoute
 
     @Serializable

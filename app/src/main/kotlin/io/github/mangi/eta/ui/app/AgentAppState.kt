@@ -36,10 +36,12 @@ import io.github.mangi.eta.agent.skill.SkillRuntime
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.safeLogType
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
+import io.github.mangi.eta.data.repository.AssistantProfileRepository
 import io.github.mangi.eta.data.repository.EtaBackupRepository
 import io.github.mangi.eta.data.repository.EtaBackupSummary
 import io.github.mangi.eta.data.repository.ProviderRepository
@@ -124,6 +126,17 @@ internal class AgentAppState(
     private var conversationUpdatedAt: Map<String, Long> = initialConversations.updatedAt
     private var conversationAssistantIds: Map<String, String> = initialConversations.assistantIds
 
+    var assistantProfiles by mutableStateOf<List<AssistantProfile>>(emptyList())
+        private set
+
+    var selectedAssistantId by mutableStateOf(
+        selectedConversationId
+            ?.let { conversationAssistantIds[it] }
+            ?.takeIf(String::isNotBlank)
+            ?: AssistantProfileDefaults.DEFAULT_ID,
+    )
+        private set
+
     var homeState by mutableStateOf(
         selectedConversationId?.let(conversationsById::get) ?: emptyChatState(defaultThinkingEnabled)
     )
@@ -158,6 +171,7 @@ internal class AgentAppState(
 
     init {
         refreshConversationSummaries()
+        observeAssistantProfiles()
         observeRuntimeSelection()
         runtimeRecoveryInProgress.set(true)
         scope.launch(Dispatchers.IO) {
@@ -195,6 +209,27 @@ internal class AgentAppState(
                         applyReasoningCapabilities(capabilities)
                     }
                 }
+        }
+    }
+
+    private fun observeAssistantProfiles() {
+        scope.launch(Dispatchers.IO) {
+            AssistantProfileRepository.profilesFlow().collectLatest { profiles ->
+                withContext(Dispatchers.Main) {
+                    assistantProfiles = profiles
+                    val selected = profiles.firstOrNull {
+                        it.id == selectedAssistantId && it.enabled
+                    }?.id
+                        ?: profiles.firstOrNull {
+                            it.id == AssistantProfileDefaults.DEFAULT_ID && it.enabled
+                        }?.id
+                        ?: profiles.firstOrNull { it.enabled }?.id
+                        ?: AssistantProfileDefaults.DEFAULT_ID
+                    if (selected != selectedAssistantId) {
+                        selectedAssistantId = selected
+                    }
+                }
+            }
         }
     }
 
@@ -408,6 +443,10 @@ internal class AgentAppState(
             conversationTitles = snapshot.titles
             conversationUpdatedAt = snapshot.updatedAt
             conversationAssistantIds = snapshot.assistantIds
+            selectedAssistantId = selectedConversationId
+                ?.let { conversationAssistantIds[it] }
+                ?.takeIf(String::isNotBlank)
+                ?: AssistantProfileDefaults.DEFAULT_ID
             fileAttachmentOwnerVersion += 1
             homeState = selectedConversationId
                 ?.let(conversationsById::get)
@@ -775,6 +814,9 @@ internal class AgentAppState(
         )
         conversationsById = conversationsById + (conversationId to resolvedState)
         homeState = resolvedState
+        selectedAssistantId = conversationAssistantIds[conversationId]
+            ?.takeIf(String::isNotBlank)
+            ?: AssistantProfileDefaults.DEFAULT_ID
         conversationPaneState = conversationPaneState.copy(selectedConversationId = conversationId)
         persistConversations()
     }
@@ -783,6 +825,7 @@ internal class AgentAppState(
         if (homeState.messageEdit != null) cancelMessageEdit()
         fileAttachmentOwnerVersion += 1
         selectedConversationId = null
+        // A new chat inherits the profile currently selected in the picker.
         homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
         conversationPaneState = conversationPaneState.copy(
             selectedConversationId = null,
@@ -802,10 +845,14 @@ internal class AgentAppState(
             val nextId = conversationsById.keys.firstOrNull()
             if (nextId != null) {
                 selectedConversationId = nextId
+                selectedAssistantId = conversationAssistantIds[nextId]
+                    ?.takeIf(String::isNotBlank)
+                    ?: AssistantProfileDefaults.DEFAULT_ID
                 homeState = conversationsById.getValue(nextId).withCurrentReasoningCapabilities()
                 conversationsById = conversationsById + (nextId to homeState)
             } else {
                 selectedConversationId = null
+                selectedAssistantId = AssistantProfileDefaults.DEFAULT_ID
                 homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
             }
         }
@@ -820,6 +867,17 @@ internal class AgentAppState(
         conversationTitles = conversationTitles + (conversationId to trimmed)
         conversationUpdatedAt = conversationUpdatedAt + (conversationId to System.currentTimeMillis())
         refreshConversationSummaries()
+        persistConversations()
+    }
+
+    fun selectAssistant(assistantId: String) {
+        if (homeState.isStreaming) return
+        val profile = assistantProfiles.firstOrNull {
+            it.id == assistantId && it.enabled
+        } ?: return
+        selectedAssistantId = profile.id
+        val conversationId = selectedConversationId ?: return
+        conversationAssistantIds = conversationAssistantIds + (conversationId to profile.id)
         persistConversations()
     }
 
@@ -867,6 +925,7 @@ internal class AgentAppState(
         }
         val assistantId = conversationAssistantIds[conversationId]
             ?.takeIf(String::isNotBlank)
+            ?: selectedAssistantId.takeIf { !conversationAssistantIds.containsKey(conversationId) }
             ?: AssistantProfileDefaults.DEFAULT_ID
         conversationAssistantIds = conversationAssistantIds + (conversationId to assistantId)
         val runId = "run-${UUID.randomUUID()}"
@@ -987,6 +1046,7 @@ internal class AgentAppState(
             conversationAssistantIds = conversationAssistantIds - conversationId
             fileAttachmentOwnerVersion += 1
             selectedConversationId = null
+            selectedAssistantId = AssistantProfileDefaults.DEFAULT_ID
             homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
             conversationPaneState = conversationPaneState.copy(selectedConversationId = null)
             refreshConversationSummaries()
