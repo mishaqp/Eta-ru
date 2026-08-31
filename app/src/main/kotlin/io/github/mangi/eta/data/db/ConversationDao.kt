@@ -9,14 +9,14 @@ import androidx.room.Transaction
 @Dao
 internal interface ConversationDao {
     @Query(
-        "SELECT id, title, thinking_enabled, reasoning_effort, " +
+        "SELECT id, title, assistant_id, thinking_enabled, reasoning_effort, " +
             "applied_runtime_run_ids_json, created_at, updated_at " +
             "FROM conversations ORDER BY updated_at DESC"
     )
     suspend fun conversations(): List<ConversationMetadata>
 
     @Query(
-        "SELECT id, title, thinking_enabled, reasoning_effort, " +
+        "SELECT id, title, assistant_id, thinking_enabled, reasoning_effort, " +
             "applied_runtime_run_ids_json, created_at, updated_at " +
             "FROM conversations ORDER BY updated_at DESC LIMIT :limit OFFSET :offset"
     )

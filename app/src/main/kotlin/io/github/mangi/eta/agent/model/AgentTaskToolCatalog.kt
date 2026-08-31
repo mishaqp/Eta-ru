@@ -11,7 +11,7 @@ internal object AgentTaskToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = AgentTaskToolNames.SCHEDULE,
-                    description = "Create a persistent Eta background task. Use this for any request that must happen later or repeatedly; MEMORY.md is not a scheduler. mode=llm runs the prompt through Eta at fire time. mode=direct runs a fixed action list without spending model tokens. For a one-time task use schedule_type=once and at_unix_ms; for recurring tasks use schedule_type=cron with a UNIX five-field expression and timezone.",
+                    description = "Create a persistent Eta background task. Use this for any request that must happen later or repeatedly; MEMORY.md is not a scheduler. mode=llm runs the prompt through the selected assistant at fire time. Set assistant_id to an existing Eta assistant profile when needed. mode=direct runs a fixed action list without spending model tokens. For a one-time task use schedule_type=once and at_unix_ms; for recurring tasks use schedule_type=cron with a UNIX five-field expression and timezone.",
                     parameters = scheduleParameters(),
                 ),
             )
@@ -98,6 +98,7 @@ internal object AgentTaskToolCatalog {
         return objectParameters(
             JSONObject()
                 .put("name", JSONObject().put("type", "string").put("minLength", 1).put("maxLength", 80))
+                .put("assistant_id", JSONObject().put("type", "string").put("description", "Persistent Eta assistant profile id; omit to use the default assistant"))
                 .put("description", JSONObject().put("type", "string").put("maxLength", 500))
                 .put("mode", JSONObject().put("type", "string").put("enum", JSONArray().put("llm").put("direct")))
                 .put("prompt", JSONObject().put("type", "string").put("maxLength", 4_000))

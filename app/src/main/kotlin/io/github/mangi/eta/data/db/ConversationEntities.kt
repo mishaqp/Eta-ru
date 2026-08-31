@@ -5,14 +5,20 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.ReasoningEffort
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Entity(tableName = "conversations")
+@Entity(
+    tableName = "conversations",
+    indices = [Index("assistant_id")],
+)
 internal data class ConversationEntity(
     @PrimaryKey val id: String,
     val title: String,
+    @ColumnInfo(name = "assistant_id", defaultValue = "'eta-default-assistant'")
+    val assistantId: String = AssistantProfileDefaults.DEFAULT_ID,
     @ColumnInfo(name = "thinking_enabled") val thinkingEnabled: Boolean,
     @ColumnInfo(name = "reasoning_effort", defaultValue = "'default'")
     val reasoningEffort: String = ReasoningEffort.DEFAULT.wireValue,
@@ -25,6 +31,7 @@ internal data class ConversationEntity(
 internal data class ConversationMetadata(
     val id: String,
     val title: String,
+    @ColumnInfo(name = "assistant_id") val assistantId: String,
     @ColumnInfo(name = "thinking_enabled") val thinkingEnabled: Boolean,
     @ColumnInfo(name = "reasoning_effort") val reasoningEffort: String,
     @ColumnInfo(name = "applied_runtime_run_ids_json") val appliedRuntimeRunIdsJson: String,

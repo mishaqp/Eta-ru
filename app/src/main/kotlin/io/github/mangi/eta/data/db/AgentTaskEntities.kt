@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 
 /** Persistent user task. The task row is the source of truth; MEMORY.md is not a scheduler. */
 @Entity(
@@ -11,11 +12,14 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["enabled"]),
         Index(value = ["next_run_at"]),
+        Index(value = ["assistant_id"]),
     ],
 )
 internal data class AgentTaskEntity(
     @PrimaryKey val id: String,
     val name: String,
+    @ColumnInfo(name = "assistant_id", defaultValue = "'eta-default-assistant'")
+    val assistantId: String = AssistantProfileDefaults.DEFAULT_ID,
     val description: String? = null,
     val mode: String,
     val prompt: String? = null,

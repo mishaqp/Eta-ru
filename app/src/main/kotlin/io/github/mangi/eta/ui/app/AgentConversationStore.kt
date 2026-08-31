@@ -9,6 +9,7 @@ import io.github.mangi.eta.data.db.ConversationMetadata
 import io.github.mangi.eta.data.db.ConversationMessageEntity
 import io.github.mangi.eta.data.db.ConversationStateEntity
 import io.github.mangi.eta.data.db.EtaDatabase
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.ui.model.AgentChatHomeUiState
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
@@ -41,6 +42,7 @@ internal object AgentConversationStore {
         val conversationsById: Map<String, AgentChatHomeUiState>,
         val titles: Map<String, String>,
         val updatedAt: Map<String, Long>,
+        val assistantIds: Map<String, String> = emptyMap(),
     )
 
     private val saveMutex = Mutex()
@@ -56,6 +58,7 @@ internal object AgentConversationStore {
         conversationsById: Map<String, AgentChatHomeUiState>,
         titles: Map<String, String>,
         updatedAt: Map<String, Long>,
+        assistantIds: Map<String, String> = emptyMap(),
     ) {
         val appContext = context.applicationContext
         saveMutex.withLock {
@@ -72,6 +75,10 @@ internal object AgentConversationStore {
                     ConversationEntity(
                         id = id,
                         title = titles[id].orEmpty(),
+                        assistantId = assistantIds[id]
+                            ?.trim()
+                            ?.takeIf(String::isNotBlank)
+                            ?: AssistantProfileDefaults.DEFAULT_ID,
                         thinkingEnabled = state.reasoningEffort.enablesReasoning,
                         reasoningEffort = state.reasoningEffort.wireValue,
                         appliedRuntimeRunIdsJson = json.encodeToString(state.appliedRuntimeRunIds),
@@ -112,6 +119,7 @@ internal object AgentConversationStore {
                 conversationsById = emptyMap(),
                 titles = emptyMap(),
                 updatedAt = emptyMap(),
+                assistantIds = emptyMap(),
             )
         }
 
@@ -133,6 +141,7 @@ internal object AgentConversationStore {
         val states = linkedMapOf<String, AgentChatHomeUiState>()
         val titles = mutableMapOf<String, String>()
         val updatedAt = mutableMapOf<String, Long>()
+        val assistantIds = mutableMapOf<String, String>()
 
         conversations.forEach { conversation ->
             states[conversation.id] = AgentChatHomeUiState(
@@ -157,6 +166,7 @@ internal object AgentConversationStore {
             )
             titles[conversation.id] = conversation.title.takeUnless { it == LEGACY_UNNAMED_TITLE }.orEmpty()
             updatedAt[conversation.id] = conversation.updatedAt
+            assistantIds[conversation.id] = conversation.assistantId
         }
 
         val selected = dao.state()?.selectedConversationId
@@ -168,6 +178,7 @@ internal object AgentConversationStore {
             conversationsById = states,
             titles = titles,
             updatedAt = updatedAt,
+            assistantIds = assistantIds,
         )
     }
 

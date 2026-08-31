@@ -26,7 +26,7 @@ import androidx.room.migration.Migration
         AgentTaskRunEntity::class,
         AssistantProfileEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 internal abstract class EtaDatabase : RoomDatabase() {
@@ -65,6 +65,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
                         MIGRATION_17_18,
                         MIGRATION_18_19,
                         MIGRATION_19_20,
+                        MIGRATION_20_21,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
@@ -207,6 +208,25 @@ internal abstract class EtaDatabase : RoomDatabase() {
                     "CAST(strftime('%s','now') AS INTEGER) * 1000, " +
                     "CAST(strftime('%s','now') AS INTEGER) * 1000" +
                     ")"
+            )
+        }
+
+        internal val MIGRATION_20_21 = Migration(20, 21) { database ->
+            database.execSQL(
+                "ALTER TABLE conversations ADD COLUMN " +
+                    "assistant_id TEXT NOT NULL DEFAULT 'eta-default-assistant'"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_conversations_assistant_id " +
+                    "ON conversations(assistant_id)"
+            )
+            database.execSQL(
+                "ALTER TABLE agent_tasks ADD COLUMN " +
+                    "assistant_id TEXT NOT NULL DEFAULT 'eta-default-assistant'"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_agent_tasks_assistant_id " +
+                    "ON agent_tasks(assistant_id)"
             )
         }
 

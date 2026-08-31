@@ -6,6 +6,7 @@ import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.codex.CodexAccountRepository
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.CustomBody
 import io.github.mangi.eta.data.model.CustomHeader
 import io.github.mangi.eta.data.model.CustomProviderSetting
@@ -69,12 +70,32 @@ internal object RuntimeConfigRepository {
         ProviderRepository.repairSelection()
     }
 
-    suspend fun currentRuntimeConfig(): AgentModelClient.ModelConfig? {
+    suspend fun currentRuntimeConfig(
+        assistantId: String? = null,
+    ): AgentModelClient.ModelConfig? {
         ProviderRepository.ensureBuiltInsMerged()
         val settings = ProviderRepository.repairSelection()
-        val provider = settings.selectedProviderId?.let { ProviderRepository.providerById(it) } ?: return null
-        val model = provider.selectedOrFirstModel(settings.selectedModelId) ?: return null
-        val config = buildRuntimeConfig(provider, model)
+        val profile = assistantId
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?.takeUnless { it == AssistantProfileDefaults.DEFAULT_ID }
+            ?.let { id -> runCatching { AssistantProfileRepository.profileById(id) }.getOrNull() }
+            ?.takeIf { it.enabled }
+        val provider = profile?.providerId
+            ?.let { ProviderRepository.providerById(it) }
+            ?.takeIf { it.isEnabled }
+            ?: settings.selectedProviderId?.let { ProviderRepository.providerById(it) }
+            ?: return null
+        val preferredModelId = profile?.modelId?.takeIf(String::isNotBlank)
+            ?: settings.selectedModelId.takeIf { provider.id == settings.selectedProviderId }
+        val model = provider.selectedOrFirstModel(preferredModelId) ?: return null
+        val config = buildRuntimeConfig(provider, model).let { built ->
+            profile?.systemPrompt
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let { prompt -> built.copy(systemPrompt = prompt) }
+                ?: built
+        }
         if (ProviderSourceRegistry.resolve(provider) != ProviderSourceTypes.CODEX) {
             return config
         }

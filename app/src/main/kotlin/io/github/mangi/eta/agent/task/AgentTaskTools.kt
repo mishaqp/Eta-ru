@@ -6,7 +6,9 @@ import io.github.mangi.eta.data.db.AgentTaskCatchup
 import io.github.mangi.eta.data.db.AgentTaskEntity
 import io.github.mangi.eta.data.db.AgentTaskModes
 import io.github.mangi.eta.data.db.AgentTaskSchedules
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.repository.AgentTaskRepository
+import io.github.mangi.eta.data.repository.AssistantProfileRepository
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +49,13 @@ internal object AgentTaskTools {
     ): String {
         val now = System.currentTimeMillis()
         val name = args.requiredString("name", 1, 80)
+        val assistantId = args.optString("assistant_id").trim()
+            .takeIf(String::isNotBlank)
+            ?: AssistantProfileDefaults.DEFAULT_ID
+        AssistantProfileRepository.ensureDefault()
+        require(AssistantProfileRepository.profileById(assistantId)?.enabled == true) {
+            "assistant_id is not found or disabled: $assistantId"
+        }
         val description = args.optString("description").trim().takeIf(String::isNotBlank)
             ?.take(500)
         val mode = args.optString("mode").trim().also {
@@ -115,6 +124,7 @@ internal object AgentTaskTools {
         val task = AgentTaskEntity(
             id = UUID.randomUUID().toString(),
             name = name,
+            assistantId = assistantId,
             description = description,
             mode = mode,
             prompt = prompt,
@@ -277,6 +287,7 @@ internal object AgentTaskTools {
     private fun AgentTaskEntity.toJson(): JSONObject = JSONObject()
         .put("task_id", id)
         .put("name", name)
+        .put("assistant_id", assistantId)
         .put("description", description ?: JSONObject.NULL)
         .put("mode", mode)
         .put("schedule_type", scheduleType)

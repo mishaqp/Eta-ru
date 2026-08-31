@@ -36,6 +36,7 @@ import io.github.mangi.eta.agent.skill.SkillRuntime
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.safeLogType
+import io.github.mangi.eta.data.model.AssistantProfileDefaults
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
@@ -121,6 +122,7 @@ internal class AgentAppState(
     private var conversationsById: Map<String, AgentChatHomeUiState> = initialConversations.conversationsById
     private var conversationTitles: Map<String, String> = initialConversations.titles
     private var conversationUpdatedAt: Map<String, Long> = initialConversations.updatedAt
+    private var conversationAssistantIds: Map<String, String> = initialConversations.assistantIds
 
     var homeState by mutableStateOf(
         selectedConversationId?.let(conversationsById::get) ?: emptyChatState(defaultThinkingEnabled)
@@ -405,6 +407,7 @@ internal class AgentAppState(
             conversationsById = snapshot.conversationsById
             conversationTitles = snapshot.titles
             conversationUpdatedAt = snapshot.updatedAt
+            conversationAssistantIds = snapshot.assistantIds
             fileAttachmentOwnerVersion += 1
             homeState = selectedConversationId
                 ?.let(conversationsById::get)
@@ -793,6 +796,7 @@ internal class AgentAppState(
         conversationsById = conversationsById - conversationId
         conversationTitles = conversationTitles - conversationId
         conversationUpdatedAt = conversationUpdatedAt - conversationId
+        conversationAssistantIds = conversationAssistantIds - conversationId
         if (wasSelected) {
             fileAttachmentOwnerVersion += 1
             val nextId = conversationsById.keys.firstOrNull()
@@ -861,6 +865,10 @@ internal class AgentAppState(
         val conversationId = selectedConversationId ?: newConversationId().also {
             selectedConversationId = it
         }
+        val assistantId = conversationAssistantIds[conversationId]
+            ?.takeIf(String::isNotBlank)
+            ?: AssistantProfileDefaults.DEFAULT_ID
+        conversationAssistantIds = conversationAssistantIds + (conversationId to assistantId)
         val runId = "run-${UUID.randomUUID()}"
         val userMessage = UserMessageUi(
             id = editBoundary?.userMessage?.id ?: "user-$runId",
@@ -899,6 +907,7 @@ internal class AgentAppState(
         conversationPaneState = conversationPaneState.copy(selectedConversationId = conversationId)
         launchConversationRun(
             conversationId = conversationId,
+            assistantId = assistantId,
             runId = runId,
             prompt = runtimePrompt,
             images = pendingImages,
@@ -975,6 +984,7 @@ internal class AgentAppState(
             conversationsById = conversationsById - conversationId
             conversationTitles = conversationTitles - conversationId
             conversationUpdatedAt = conversationUpdatedAt - conversationId
+            conversationAssistantIds = conversationAssistantIds - conversationId
             fileAttachmentOwnerVersion += 1
             selectedConversationId = null
             homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
@@ -991,6 +1001,9 @@ internal class AgentAppState(
     fun regenerateMessage(messageId: String) {
         if (homeState.isStreaming || homeState.messageEdit != null) return
         val conversationId = selectedConversationId ?: return
+        val assistantId = conversationAssistantIds[conversationId]
+            ?.takeIf(String::isNotBlank)
+            ?: AssistantProfileDefaults.DEFAULT_ID
         val boundary = AgentConversationRevisionReducer.boundary(homeState, messageId) ?: return
         val images = boundary.userMessage.images.mapIndexed { index, dataUrl ->
             PendingImageUi(
@@ -1008,6 +1021,7 @@ internal class AgentAppState(
         if (boundary.contextWasCompacted) showCompactedRevisionNotice()
         launchConversationRun(
             conversationId = conversationId,
+            assistantId = assistantId,
             runId = runId,
             prompt = boundary.userMessage.content,
             images = images,
@@ -1021,6 +1035,7 @@ internal class AgentAppState(
 
     private fun launchConversationRun(
         conversationId: String,
+        assistantId: String,
         runId: String,
         prompt: String,
         images: List<PendingImageUi>,
@@ -1068,7 +1083,7 @@ internal class AgentAppState(
             } else {
                 ReasoningEffort.OFF
             }
-            val config = RuntimeConfigRepository.currentRuntimeConfig()?.copy(
+            val config = RuntimeConfigRepository.currentRuntimeConfig(assistantId)?.copy(
                 terminalTools = agentBooleanForUi(Prefs.Keys.AGENT_TERMINAL_TOOLS),
                 browserTools = agentBooleanForUi(Prefs.Keys.AGENT_BROWSER_TOOLS),
                 deviceDirectTools = agentBooleanForUi(Prefs.Keys.AGENT_DEVICE_DIRECT_TOOLS),
@@ -2171,6 +2186,7 @@ internal class AgentAppState(
         val conversations = conversationsById
         val titles = conversationTitles
         val timestamps = conversationUpdatedAt
+        val assistantIds = conversationAssistantIds
         return synchronized(persistenceLock) {
             val previous = persistenceJob
             scope.async(Dispatchers.IO) {
@@ -2182,6 +2198,7 @@ internal class AgentAppState(
                         conversationsById = conversations,
                         titles = titles,
                         updatedAt = timestamps,
+                        assistantIds = assistantIds,
                     )
                     onSaved?.invoke()
                     true

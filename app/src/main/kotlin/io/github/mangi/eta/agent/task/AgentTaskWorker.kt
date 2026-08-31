@@ -128,7 +128,7 @@ internal class AgentTaskWorker(
 
     private suspend fun runLlm(task: AgentTaskEntity, runId: String): AgentTaskActionRunner.Outcome =
         withContext(Dispatchers.IO) {
-            val config = RuntimeConfigRepository.currentRuntimeConfig()
+            val config = RuntimeConfigRepository.currentRuntimeConfig(task.assistantId)
                 ?: return@withContext AgentTaskActionRunner.Outcome(
                     outcome = AgentTaskOutcomes.FAILED,
                     error = "no model is configured",
@@ -152,6 +152,7 @@ internal class AgentTaskWorker(
                     payload = JSONObject()
                         .put("task_id", task.id)
                         .put("task_name", task.name)
+                        .put("assistant_id", task.assistantId)
                         .toString(),
                     dismissEntrySurfaceOnForegroundOperation = false,
                 ),
