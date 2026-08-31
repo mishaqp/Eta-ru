@@ -2757,7 +2757,7 @@ private fun String.toToolIcon(): Int = when (this) {
     "skills_list", "skills_read", "skills_read_resource",
     "skills_list_curated", "skills_inspect_github", "skills_install_from_github",
         -> LucideR.drawable.lucide_ic_sparkles
-    "set_alarm", "set_timer", "list_alarms", "list_active_timers" ->
+    "set_alarm", "set_timer" ->
         LucideR.drawable.lucide_ic_alarm_clock
     "device_status", "network_info", "set_device_state", "get_device_environment" ->
         LucideR.drawable.lucide_ic_smartphone
@@ -2769,23 +2769,20 @@ private fun String.toToolIcon(): Int = when (this) {
     "wifi_credentials" -> LucideR.drawable.lucide_ic_lock
     "get_setting", "set_setting", "app_state_control" -> LucideR.drawable.lucide_ic_shield_alert
     "get_logcat" -> LucideR.drawable.lucide_ic_file_text
-    "get_current_location", "search_saved_places" -> LucideR.drawable.lucide_ic_map_pin
+    "get_current_location" -> LucideR.drawable.lucide_ic_map_pin
     "get_health_summary" -> LucideR.drawable.lucide_ic_heart_pulse
     "recent_app_activity", "app_usage_summary" -> LucideR.drawable.lucide_ic_activity
     "search_calendar_events" -> LucideR.drawable.lucide_ic_calendar
     "search_contacts" -> LucideR.drawable.lucide_ic_contact
     "search_call_history" -> LucideR.drawable.lucide_ic_phone
     "search_messages" -> LucideR.drawable.lucide_ic_message_square
-    "search_media", "search_audio", "search_qq_chat_images", "search_wechat_chat_images" ->
+    "search_media", "search_audio" ->
         LucideR.drawable.lucide_ic_image
-    "search_recordings", "search_coloros_recordings", "search_recording_summaries" ->
+    "search_recordings" ->
         LucideR.drawable.lucide_ic_mic
     "search_files" -> LucideR.drawable.lucide_ic_folder_open
     "search_downloads" -> LucideR.drawable.lucide_ic_download
     "search_clipboard_history" -> LucideR.drawable.lucide_ic_clipboard
-    "search_coloros_notes" -> LucideR.drawable.lucide_ic_sticky_note
-    "search_coloros_memories" -> LucideR.drawable.lucide_ic_brain
-    "search_personal_orders" -> LucideR.drawable.lucide_ic_shopping_bag
     "terminal", "run_command" -> LucideR.drawable.lucide_ic_square_terminal
     "read_file" -> LucideR.drawable.lucide_ic_file_text
     "write_file" -> LucideR.drawable.lucide_ic_file_pen

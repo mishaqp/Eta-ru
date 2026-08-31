@@ -10,13 +10,11 @@ import io.github.mangi.eta.core.safeLogType
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Intent
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import io.github.mangi.eta.config.Prefs
 import io.github.libxposed.api.XposedModule
-import java.lang.reflect.Field
 import java.util.WeakHashMap
 
 internal object GoogleAppHooks {
@@ -36,14 +34,6 @@ internal object GoogleAppHooks {
         val hooks = HookRegistrar(module, rootLogger, "GoogleApp")
         val logger = hooks.logger
         return hooks.install {
-            // 机型伪装：在 Google 进程内伪装为 Samsung S24 Ultra，以放开一圈即搜能力。
-            // Build 字段是启动时一次性写入的副作用，作为一圈即搜的底层依赖始终执行。
-            setBuildField(logger, Build::class.java, "MANUFACTURER", ModuleConfig.SPOOF_MANUFACTURER)
-            setBuildField(logger, Build::class.java, "BRAND", ModuleConfig.SPOOF_BRAND)
-            setBuildField(logger, Build::class.java, "MODEL", ModuleConfig.SPOOF_MODEL)
-            setBuildField(logger, Build::class.java, "PRODUCT", ModuleConfig.SPOOF_PRODUCT)
-            setBuildField(logger, Build::class.java, "DEVICE", ModuleConfig.SPOOF_DEVICE)
-
             // 锁屏/亮屏补语音输入：开关在拦截回调里即时判断。
             hookFloatyVoiceCommand(hooks, classLoader)
         }
@@ -132,7 +122,7 @@ internal object GoogleAppHooks {
             runCatching {
                 activity.startActivity(
                     Intent(Intent.ACTION_VOICE_COMMAND).apply {
-                        setPackage(ModuleConfig.GOOGLE_PACKAGE)
+                        setPackage(ModuleConfig.GOOGLE_APP_PACKAGE)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                 )
@@ -170,38 +160,4 @@ internal object GoogleAppHooks {
             getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
         }.getOrDefault(false)
 
-    private fun setBuildField(
-        logger: ModuleLogger,
-        clazz: Class<*>,
-        fieldName: String,
-        value: String
-    ) {
-        val field = runCatching {
-            clazz.getDeclaredField(fieldName).apply { isAccessible = true }
-        }.getOrElse { throwable ->
-            logger.warn("GSA: 找不到 Build.$fieldName，type=${throwable.safeLogType()}")
-            return
-        }
-
-        runCatching {
-            field.set(null, value)
-        }.recoverCatching {
-            val unsafeClass = Class.forName("sun.misc.Unsafe")
-            val theUnsafe = unsafeClass.getDeclaredField("theUnsafe").apply {
-                isAccessible = true
-            }.get(null)
-            val base = unsafeClass.getDeclaredMethod("staticFieldBase", Field::class.java)
-                .invoke(theUnsafe, field)
-            val offset = unsafeClass.getDeclaredMethod("staticFieldOffset", Field::class.java)
-                .invoke(theUnsafe, field) as Long
-            unsafeClass.getDeclaredMethod(
-                "putObjectVolatile",
-                Any::class.java,
-                Long::class.javaPrimitiveType!!,
-                Any::class.java
-            ).invoke(theUnsafe, base, offset, value)
-        }.onFailure { throwable ->
-            logger.warn("GSA: 修改 Build.$fieldName 失败，type=${throwable.safeLogType()}")
-        }
-    }
 }

@@ -1,0 +1,43 @@
+name: Google and Pixel validation
+
+on:
+  pull_request:
+    branches:
+      - build/codex-release-once
+    paths:
+      - app/**
+      - .github/workflows/google-pixel-validation.yml
+      - build.gradle.kts
+      - settings.gradle.kts
+      - gradle/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-provider: basic
+      - uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
+        with:
+          packages: ""
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager --channel=3 "platforms;android-37.0"
+      - run: ./gradlew --no-daemon --no-configuration-cache :app:compileDebugKotlin
+      - run: >-
+          ./gradlew --no-daemon --no-configuration-cache :app:testDebugUnitTest
+          --tests io.github.mangi.eta.agent.model.AgentDeviceToolCatalogTest
+          --tests io.github.mangi.eta.agent.model.AgentSensitiveTranscriptTest
+          --tests io.github.mangi.eta.core.ModuleConfigEntryPackagesTest
+          --tests io.github.mangi.eta.config.PowerAssistantTargetTest
+          --tests io.github.mangi.eta.hook.system.AssistantBindingTest

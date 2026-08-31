@@ -34,7 +34,7 @@ val StatusError: Color @Composable get() = MiuixTheme.colorScheme.error
 val StatusRunning: Color @Composable get() = MiuixTheme.colorScheme.primary
 val StatusIdle: Color @Composable get() = MiuixTheme.colorScheme.onSurfaceVariantSummary
 
-// 图标 tint 色系（与设置页一致，统一使用 ColorOS 设置主色）
+// Icon tint palette shared with the Pixel-oriented settings surface.
 // 不要用 coui_color_*_variant、截图平均取样色或 Material/iOS 近似色替代。
 val IconTintBlue = Color(0xFF0066FF)
 val IconTintGreen = Color(0xFF00BD13)

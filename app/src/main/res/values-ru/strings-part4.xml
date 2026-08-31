@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
   <string name="app_name">Eta</string>
-  <string name="xposed_description">Системный ИИ-агент, который заменяет помощников Breeno и Super XiaoAI, включает Gemini и функцию «Обвести и найти», а также предоставляет встроенный браузер, терминал и инструменты управления устройством.</string>
+  <string name="xposed_description">System-level AI agent for Google and AOSP Android with Gemini, Circle to Search, browser, terminal, and device tools.</string>
   <string name="agent_accessibility_label">Управление устройством через Eta</string>
   <string name="agent_accessibility_description">Разрешить Eta считывать содержимое экрана, выполнять касания и смахивания, вводить текст и совершать системные действия.</string>
   <string name="notification_history_service_label">История уведомлений Eta</string>
@@ -52,9 +52,9 @@
   <string name="page_this_message_and_subsequent_content_will_be_replaced_086779">После отправки это сообщение и всё последующее содержимое будут заменены</string>
   <string name="page_this_message_will_be_replaced_after_sending_fb95e4">После отправки это сообщение будет заменено</string>
   <string name="tool_ui_agent_browser_a66bd5">Браузер Агента</string>
-  <string name="tool_ui_coloros_notes_6c324c">Заметки ColorOS</string>
-  <string name="tool_ui_coloros_recording_a4e425">Записи ColorOS</string>
-  <string name="tool_ui_coloros_system_memory_eff961">Системная память ColorOS</string>
+
+
+
   <string name="tool_ui_qq_chat_pictures_e21bf9">Изображения из чатов QQ</string>
   <string name="tool_ui_wi_fi_password_80e9a4">Пароль Wi‑Fi</string>
   <string name="tool_ui_user_root_shell_conversational_execution_and_asy_13c2ab">Пользовательская или root-оболочка с диалоговым выполнением команд и асинхронным чтением результатов</string>
@@ -85,7 +85,7 @@
   <string name="tool_ui_application_status_930ff0">Состояние приложения</string>
   <string name="tool_ui_current_location_b458ea">Текущее местоположение</string>
   <string name="tool_ui_recording_summary_2fe550">Сводка по записям</string>
-  <string name="tool_ui_wechat_chat_pictures_72b268">Изображения из чатов WeChat</string>
+
   <string name="tool_ui_open_app_7c65e7">Открыть приложение</string>
   <string name="tool_ui_open_the_notification_bar_quick_settings_and_oth_5e51cf">Открывать панель уведомлений, быстрые настройки и другие системные панели</string>
   <string name="tool_ui_perform_up_down_left_and_right_swipe_gestures_3ef0de">Выполнять смахивания вверх, вниз, влево и вправо</string>
@@ -122,7 +122,7 @@
   <string name="tool_ui_retrieve_takeout_shopping_express_delivery_ticke_f8d002">Получать сведения о заказах еды и товаров, доставках, билетах и поездках</string>
   <string name="tool_ui_retrieve_collected_information_and_its_structure_9c1c71">Получать сохранённую информацию и связанные с ней структурированные данные</string>
   <string name="tool_ui_retrieve_transcribed_summaries_and_notes_associa_9cb00f">Получать расшифровки, сводки и заметки, связанные с записями</string>
-  <string name="tool_ui_retrieve_recent_pictures_in_wechat_chat_picture__ab66f7">Получать недавние изображения из кэша чатов WeChat</string>
+
   <string name="tool_ui_retrieve_the_last_7_days_of_notifications_saved__643e43">Получать уведомления за последние 7 дней, сохранённые локально после предоставления разрешения</string>
   <string name="tool_ui_retrieve_documents_and_files_from_shared_storage_7d6193">Получать документы и файлы из общего хранилища</string>
   <string name="tool_ui_retrieve_normal_recordings_and_call_recordings_55c192">Получать обычные записи и записи звонков</string>

@@ -266,7 +266,7 @@ class AgentRuntimeWireTest {
             handoff = AgentRuntimeWire.EntryHandoff(
                 id = "handoff-1",
                 source = "overlay",
-                payload = """{"package":"com.tencent.mm"}""",
+                payload = """{"package":"com.google.android.apps.messaging"}""",
             ),
         )
 
@@ -472,8 +472,8 @@ class AgentRuntimeWireTest {
     fun entryHandoffBundleRoundTripPreservesEntrySurfacePolicy() {
         val handoff = AgentRuntimeWire.EntryHandoff(
             id = "handoff-1",
-            source = "breeno",
-            payload = """{"userText":"打开微信"}""",
+            source = AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE,
+            payload = """{"userText":"open Messages"}""",
             dismissEntrySurfaceOnForegroundOperation = true,
         )
 
@@ -498,11 +498,11 @@ class AgentRuntimeWireTest {
     }
 
     @Test
-    fun legacyBreenoHandoffDefaultsToDismissingEntrySurface() {
+    fun legacyHandoffDefaultsToKeepingEntrySurfaceVisible() {
         val bundle = AgentRuntimeWire.toBundle(
             AgentRuntimeWire.EntryHandoff(
                 id = "handoff-1",
-                source = "breeno",
+                source = "legacy",
                 payload = "{}",
             )
         ).apply {
@@ -511,11 +511,11 @@ class AgentRuntimeWireTest {
 
         val handoff = AgentRuntimeWire.entryHandoffFromBundle(bundle)
 
-        assertEquals(true, handoff.dismissEntrySurfaceOnForegroundOperation)
+        assertEquals(false, handoff.dismissEntrySurfaceOnForegroundOperation)
     }
 
     @Test
-    fun legacyNonBreenoHandoffDefaultsToKeepingEntrySurfaceVisible() {
+    fun legacyGenericHandoffDefaultsToKeepingEntrySurfaceVisible() {
         val bundle = AgentRuntimeWire.toBundle(
             AgentRuntimeWire.EntryHandoff(
                 id = "handoff-1",

@@ -12,7 +12,7 @@ import io.github.libxposed.api.XposedModule
 /**
  * 在 SystemServer 完成其他系统服务启动后接入无障碍保护。
  *
- * 当前 ColorOS 16 目标已由 contextual_search 启动链路验证
+ * The target AOSP implementation is validated against the contextual-search startup path.
  * SystemServer.startOtherServices(TimingsTraceAndSlog) 的类名、签名与调用时机。
  */
 internal object AccessibilityProtectionHooks {

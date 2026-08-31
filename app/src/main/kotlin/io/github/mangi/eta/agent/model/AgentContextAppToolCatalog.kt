@@ -60,7 +60,7 @@ internal object AgentContextAppToolCatalog {
                                     "package_name",
                                     JSONObject()
                                         .put("type", "string")
-                                        .put("description", "精确 Android 包名，例如 com.tencent.mobileqq")
+                                        .put("description", "精确 Android 包名，例如 com.google.android.apps.messaging")
                                 )
                                 .put(
                                     "app_name",

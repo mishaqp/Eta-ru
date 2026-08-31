@@ -56,7 +56,7 @@ class AgentRuntimeResultStoreTest {
         val completedRun = AgentRuntimeWire.CompletedRun(
             handoff = AgentRuntimeWire.EntryHandoff(
                 id = runId,
-                source = "breeno",
+                source = AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE,
                 payload = "{}",
             ),
             result = AgentRuntimeWire.RunResult(
@@ -91,7 +91,7 @@ class AgentRuntimeResultStoreTest {
         val completedRun = AgentRuntimeWire.CompletedRun(
             handoff = AgentRuntimeWire.EntryHandoff(
                 id = runId,
-                source = "breeno",
+                source = AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE,
                 payload = "{}",
             ),
             result = AgentRuntimeWire.RunResult(

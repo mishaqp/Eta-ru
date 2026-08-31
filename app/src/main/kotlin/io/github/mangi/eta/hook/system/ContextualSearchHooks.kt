@@ -20,7 +20,7 @@ internal object ContextualSearchHooks {
     ): HookInstallation {
         val hooks = HookRegistrar(module, rootLogger, "ContextualSearch")
         return hooks.install {
-            // ContextualSearch 服务补齐是一圈即搜的底层依赖（被 ColorOS 砍掉），不可选。
+            // Contextual Search service bootstrap is required on AOSP builds that omit it.
             hookContextualSearchBootstrap(module, hooks, classLoader)
             hookContextualSearchPackage(hooks, classLoader)
             hookContextualSearchPermission(hooks, classLoader)
@@ -87,7 +87,7 @@ internal object ContextualSearchHooks {
             id = "system.contextual-search-package",
             executable = method,
             description = "ContextualSearchManagerService.getContextualSearchPackageName"
-        ) { ModuleConfig.GOOGLE_PACKAGE }
+        ) { ModuleConfig.GOOGLE_APP_PACKAGE }
     }
 
     private fun hookContextualSearchPermission(
@@ -131,8 +131,7 @@ internal object ContextualSearchHooks {
         } catch (_: Exception) {
             null
         } ?: return false
-        return packages.contains(ModuleConfig.SYSTEM_UI_PACKAGE) ||
-            packages.contains(ModuleConfig.COLOR_DIRECT_PACKAGE)
+        return packages.contains(ModuleConfig.SYSTEM_UI_PACKAGE)
     }
 
     private fun ensureContextualSearchService(

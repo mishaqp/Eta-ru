@@ -7,8 +7,8 @@ class PowerAssistantTargetTest {
     @Test
     fun `valid persisted values select matching target`() {
         assertEquals(
-            PowerAssistantTarget.OEM,
-            PowerAssistantTarget.resolve("oem", legacyPowerKeyTakeover = true),
+            PowerAssistantTarget.SYSTEM,
+            PowerAssistantTarget.resolve("system", legacyPowerKeyTakeover = true),
         )
         assertEquals(
             PowerAssistantTarget.GEMINI,
@@ -29,9 +29,9 @@ class PowerAssistantTargetTest {
     }
 
     @Test
-    fun `missing persisted value preserves legacy OEM behavior`() {
+    fun `missing persisted value selects the system default`() {
         assertEquals(
-            PowerAssistantTarget.OEM,
+            PowerAssistantTarget.SYSTEM,
             PowerAssistantTarget.resolve(null, legacyPowerKeyTakeover = false),
         )
     }
@@ -43,7 +43,7 @@ class PowerAssistantTargetTest {
             PowerAssistantTarget.resolve("unknown", legacyPowerKeyTakeover = true),
         )
         assertEquals(
-            PowerAssistantTarget.OEM,
+            PowerAssistantTarget.SYSTEM,
             PowerAssistantTarget.resolve("unknown", legacyPowerKeyTakeover = false),
         )
     }

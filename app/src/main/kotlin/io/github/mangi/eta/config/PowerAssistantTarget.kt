@@ -5,19 +5,20 @@ internal enum class PowerAssistantTarget(
 ) {
     ETA("eta"),
     GEMINI("gemini"),
-    OEM("oem"),
+    SYSTEM("system"),
     ;
 
     companion object {
         fun resolve(
             persistedValue: String?,
             legacyPowerKeyTakeover: Boolean,
-        ): PowerAssistantTarget = entries.firstOrNull {
-            it.persistedValue == persistedValue
+        ): PowerAssistantTarget = when (persistedValue) {
+            "oem" -> SYSTEM
+            else -> entries.firstOrNull { it.persistedValue == persistedValue }
         } ?: if (legacyPowerKeyTakeover) {
             GEMINI
         } else {
-            OEM
+            SYSTEM
         }
     }
 }
