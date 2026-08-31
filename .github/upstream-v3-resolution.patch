@@ -1,0 +1,109 @@
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -30,14 +30,9 @@
+         applicationId = "io.github.mangi.eta"
+         minSdk = 34
+         targetSdk = 36
+-<<<<<<< HEAD
+-        versionCode = 268
+-        versionName = "2.6.8"
+-=======
+         // versionCode 规则：yyyyMMdd + 两位当日序号（01 起），发版时随 versionName 一起手动递增。
+-        versionCode = 2026083101
+-        versionName = "3.0.0"
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
++        versionCode = 2026083102
++        versionName = "3.0.0-ru.1"
+     }
+ 
+     signingConfigs {
+--- a/app/src/main/kotlin/io/github/mangi/eta/agent/tool/AgentLocalTools.kt
++++ b/app/src/main/kotlin/io/github/mangi/eta/agent/tool/AgentLocalTools.kt
+@@ -42,12 +42,9 @@
+ import io.github.mangi.eta.data.repository.AgentMemoryMutation
+ import io.github.mangi.eta.data.repository.AgentMemoryRepository
+ import io.github.mangi.eta.data.repository.AgentMemoryWriteResult
+-<<<<<<< HEAD
+ import io.github.mangi.eta.agent.task.AgentTaskToolNames
+ import io.github.mangi.eta.agent.task.AgentTaskTools
+-=======
+ import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
+ import java.util.Locale
+ import java.util.concurrent.ConcurrentHashMap
+ import java.util.concurrent.atomic.AtomicBoolean
+--- a/app/src/main/kotlin/io/github/mangi/eta/ui/app/AgentAppRoot.kt
++++ b/app/src/main/kotlin/io/github/mangi/eta/ui/app/AgentAppRoot.kt
+@@ -73,13 +73,9 @@
+ import io.github.mangi.eta.ui.screens.permissions.PermissionHealthScreen
+ import io.github.mangi.eta.ui.screens.skills.AgentSkillsScreen
+ import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen
+-<<<<<<< HEAD
+-import io.github.mangi.eta.ui.screens.terminal.TerminalScreen
+-=======
+ import io.github.mangi.eta.ui.screens.terminal.LinuxFilesScreen
+ import io.github.mangi.eta.ui.screens.terminal.SharedFoldersScreen
+ import io.github.mangi.eta.ui.screens.terminal.TerminalEntryScreen
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
+ import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
+ 
+ /**
+@@ -550,9 +546,6 @@
+                     onOpenTerminal = { pushRoute(AppRoute.Terminal) },
+                 )
+             }
+-            entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {
+-                TerminalScreen(context = context, onBack = ::popRoute)
+-            }
+             entry<AppRoute.ModelProviders>(swipeDismiss = swipeDismiss) {
+                 ModelProviderListScreen(
+                     onNavigate = { route -> pushRoute(route) },
+--- a/app/src/main/kotlin/io/github/mangi/eta/ui/app/AgentAppShell.kt
++++ b/app/src/main/kotlin/io/github/mangi/eta/ui/app/AgentAppShell.kt
+@@ -45,8 +45,6 @@
+ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
+ import top.yukonga.miuix.kmp.window.WindowListPopup
+ 
+-<<<<<<< HEAD
+-=======
+ /**
+  * Agent App 统一壳层。
+  *
+@@ -55,7 +53,6 @@
+  * - 非首页子路由统一提供返回按钮与标题，避免每个页面各自像独立设置页。
+  * - Settings 由标准二级页骨架自己提供 TopAppBar，壳层在此路由不重复绘制。
+  */
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
+ @Composable
+ fun AgentAppShell(
+     currentRoute: AppRoute?,
+@@ -325,12 +322,8 @@
+     is AppRoute.Memory -> stringResource(R.string.route_memory)
+     is AppRoute.Tasks -> stringResource(R.string.route_tasks)
+     is AppRoute.LinuxEnvironment -> stringResource(R.string.route_linux_environment)
+-<<<<<<< HEAD
+-    is AppRoute.Terminal -> stringResource(R.string.terminal_title)
+-=======
+     is AppRoute.SharedFolders -> stringResource(R.string.route_shared_folders)
+     is AppRoute.LinuxFiles -> stringResource(R.string.route_linux_files)
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
+     is AppRoute.ModelProviders -> stringResource(R.string.route_model_providers)
+     is AppRoute.Assistants -> stringResource(R.string.route_assistants)
+     is AppRoute.McpServers -> stringResource(R.string.route_mcp_servers)
+--- a/app/src/main/kotlin/io/github/mangi/eta/ui/navigation/AppRoute.kt
++++ b/app/src/main/kotlin/io/github/mangi/eta/ui/navigation/AppRoute.kt
+@@ -48,14 +48,10 @@
+     data object LinuxEnvironment : AppRoute
+ 
+     @Serializable
+-<<<<<<< HEAD
+-    data object Terminal : AppRoute
+-=======
+     data object SharedFolders : AppRoute
+ 
+     @Serializable
+     data class LinuxFiles(val distribution: String) : AppRoute
+->>>>>>> 0a90eac28a10e34d7b63d5b240afaa2621000282
+ 
+     @Serializable
+     data object ModelProviders : AppRoute
