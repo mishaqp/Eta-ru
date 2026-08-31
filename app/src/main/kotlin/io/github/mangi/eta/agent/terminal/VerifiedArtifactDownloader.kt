@@ -19,6 +19,8 @@ internal data class VerifiedArtifact(
     val url: String,
     val sha256: String,
     val sizeBytes: Long,
+    /** 在官方地址前尝试的镜像；镜像只改变传输路径，完整大小和摘要校验仍以制品清单为准。 */
+    val preferredUrls: List<String> = emptyList(),
     val fallbackUrls: List<String> = emptyList(),
 )
 
@@ -33,7 +35,7 @@ internal class VerifiedArtifactDownloader(
     ): Boolean {
         target.parentFile?.mkdirs()
         if (verify(artifact, target)) return true
-        val candidates = listOf(artifact.url) + artifact.fallbackUrls
+        val candidates = (artifact.preferredUrls + artifact.url + artifact.fallbackUrls).distinct()
         for ((attempt, url) in candidates.withIndex()) {
             target.delete()
             if (downloadOnce(artifact, target, url, attempt + 1, onProgress)) return true

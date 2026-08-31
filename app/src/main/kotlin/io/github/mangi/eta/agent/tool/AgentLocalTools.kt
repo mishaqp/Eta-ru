@@ -30,7 +30,11 @@ import io.github.mangi.eta.agent.skill.GitHubSkillRepository
 import io.github.mangi.eta.agent.skill.GitHubSkillSourceException
 import io.github.mangi.eta.agent.skill.PublicGitHubSkillSource
 import io.github.mangi.eta.agent.terminal.AlpineEnvironmentPaths
+import io.github.mangi.eta.agent.terminal.DetachedTaskSupervisor
+import io.github.mangi.eta.agent.terminal.LinuxEnvironmentPaths
+import io.github.mangi.eta.agent.terminal.terminalEnvironment
 import io.github.mangi.eta.agent.terminal.RootShellTerminalController
+import io.github.mangi.eta.agent.terminal.SharedFolderMounts
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AgentLogger
 import io.github.mangi.eta.core.HookSupport
@@ -40,6 +44,7 @@ import io.github.mangi.eta.data.repository.AgentMemoryRepository
 import io.github.mangi.eta.data.repository.AgentMemoryWriteResult
 import io.github.mangi.eta.agent.task.AgentTaskToolNames
 import io.github.mangi.eta.agent.task.AgentTaskTools
+import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -98,6 +103,26 @@ internal class AgentLocalTools(
     private val terminalController = RootShellTerminalController(
         logger = logger,
         linuxRootfsPath = AlpineEnvironmentPaths.rootfsDir(context).absolutePath,
+        linuxRootfsPathProvider = { environment ->
+            environment.linuxDistribution?.let { distribution ->
+                LinuxEnvironmentPaths.rootfsDir(context, distribution).absolutePath
+            }
+        },
+        detachedSupervisor = DetachedTaskSupervisor(
+            logger = logger,
+            recordsFile = DetachedTaskSupervisor.defaultRecordsFile(context),
+            linuxRootfsPath = AlpineEnvironmentPaths.rootfsDir(context).absolutePath,
+            linuxRootfsPathProvider = { environment ->
+                environment.linuxDistribution?.let { distribution ->
+                    LinuxEnvironmentPaths.rootfsDir(context, distribution).absolutePath
+                }
+            },
+            linuxSharedMountsProvider = { SharedFolderMounts.current() },
+        ),
+        linuxSharedMountsProvider = { SharedFolderMounts.current() },
+        selectedLinuxEnvironmentProvider = {
+            LinuxEnvironmentSettingsRepository.current(context).terminalEnvironment
+        },
     )
     private val publishedObservation = AtomicReference(PublishedObservation())
     private val runAvailableSkillIds = runAvailableSkillIds
@@ -658,6 +683,7 @@ internal class AgentLocalTools(
             maxChars = args.optInt("max_chars", 8_000),
             closeIfDone = args.optBoolean("close_if_done", false),
             environment = args.optString("environment", "android"),
+            taskId = args.optString("task_id").ifBlank { null },
         )
     }
 

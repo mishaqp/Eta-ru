@@ -59,17 +59,22 @@ internal object AgentPromptBuilder {
                     "任务需要在手机上执行命令、查看 Linux/Android 系统信息、读取/写入文件、查询包名或使用 shell 时，" +
                         "必须调用 terminal 或 run_command/read_file/write_file/list_directory 工具。" +
                         "Android 系统、应用、日志、Magisk 与设备文件操作使用 terminal 的 environment=android；" +
-                        "Git、压缩打包、JSON 处理或编译工具优先使用 environment=linux；如果返回 LINUX_ENVIRONMENT_NOT_READY，" +
-                        "准确告知用户先到设置安装 Linux 工具环境，不要把 Android 缺少命令误报成设备不支持。" +
-                        "若 python3、pip、uv、node 或 npm 命令不存在，准确告知用户在 Linux 工具环境页面安装对应的“Python 工具”或“Node.js 环境”；需要 sshd 或 ssh-keygen 时引导安装“SSH 远程访问”；不要在 Android 环境冒充或自行下载未校验的工具。" +
+                        "用户选择的 Alpine 或 Debian 工具环境统一使用 environment=linux；不要自行改用另一发行版。" +
+                        "如果返回 LINUX_ENVIRONMENT_NOT_READY，" +
+                        "准确告知用户先到设置安装对应的 Linux 工具环境，不要把 Android 缺少命令误报成设备不支持。" +
+                        "若 Linux 基础命令不存在，准确告知用户先在 Linux 工具环境页面完成“安装基础工具”；Python/uv、Node.js、SSH 与 APK 分析都在当前选中的发行版中分别按需安装。不要在 Android 环境冒充或自行下载工具。" +
                         "Linux 环境默认在 /workspace 工作，该目录与 Android 的 /data/local/tmp/eta 对应；" +
                         "共享存储可通过 /sdcard 使用，Linux 环境不能直接假定其他 Android 受保护路径可见。" +
+                        "用户配置的共享文件夹挂载在 Linux 环境 /workspace/mounts/ 下，每个子目录对应一个 Android 目录；" +
+                        "用户提到共享文件、手机目录或要处理设备上的文件时，先 ls /workspace/mounts/ 确认已有共享，再读写对应子目录。" +
                         "分析 APK 时优先在 linux 环境使用 jadx、apktool、smali 或 baksmali；若命令不存在，" +
                         "准确告知用户在 Linux 工具环境页面安装“APK 分析”，不要自行下载不受校验的工具。" +
                         "当前 Apktool 只支持解码与检查，不支持 build/回编译；不要绕过该限制或宣称已经生成可安装 APK。" +
                         "用户说“执行命令 xxx”且未指定环境时，首轮必须调用 terminal，action=open_and_exec，identity=root，environment=android，command=xxx；" +
                         "连续多步 shell 工作先 action=open 获取 session_id，再 action=exec 复用会话；" +
                         "长时间命令使用 async=true 启动后用 read_async_result 轮询，完成后 close；" +
+                        "需要长期驻留的后台服务（监听端口、Web 面板等）用 action=daemon_start 启动，daemon_list 查看状态、daemon_logs 读日志、daemon_stop 停止；" +
+                        "守护任务不随 run 或会话结束回收，也不要用 nohup 或 & 手工后台化；" +
                         "async 后台命令是独立 shell，不要和 session_id 混用。不要调用 search_apps 查询“终端”或“Termux”。" +
                         "不要回答“没有终端应用”或建议用户安装 Termux；这些工具已经在当前 Android 设备上通过内置 Root Shell 可用。" +
                         "读取图片内容必须调用 read_image。同一轮模型回复最多调用一次 read_image；需要查看多张图片时，" +

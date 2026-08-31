@@ -23,6 +23,12 @@ class AlpineEnvironmentInstallerTest {
         assertEquals("3.24.1", artifact.version)
         assertTrue(artifact.fileName.endsWith("-aarch64.tar.gz"))
         assertTrue(artifact.url.startsWith("https://dl-cdn.alpinelinux.org/alpine/v3.24/"))
+        assertEquals(
+            listOf(
+                "https://mirrors.aliyun.com/alpine/v3.24/releases/aarch64/alpine-minirootfs-3.24.1-aarch64.tar.gz",
+            ),
+            artifact.preferredUrls,
+        )
         assertEquals(64, artifact.sha256.length)
         assertEquals(4_023_732L, artifact.sizeBytes)
     }
@@ -33,14 +39,10 @@ class AlpineEnvironmentInstallerTest {
     }
 
     @Test
-    fun readinessRequiresMarkerAndBusyBoxAndTracksCommonToolsSeparately() {
+    fun readinessUsesInstallerMarkerAndTracksCommonToolsSeparately() {
         val rootfs = temporaryFolder.newFolder("rootfs")
-        val bin = File(rootfs, "bin").apply { mkdirs() }
-        val busyBox = File(bin, "busybox")
         val ready = File(rootfs, AlpineEnvironmentPaths.READY_MARKER)
 
-        assertFalse(AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath))
-        busyBox.writeText("busybox")
         assertFalse(AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath))
         ready.writeText("version=3.24.1\n")
         assertTrue(AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath))
@@ -62,80 +64,141 @@ class AlpineEnvironmentInstallerTest {
         assertTrue(packages.containsAll(listOf("ripgrep", "fd", "diffutils", "patch", "rsync")))
         assertFalse(packages.contains("python3"))
         assertFalse(packages.contains("uv"))
+        assertFalse(packages.contains("nodejs"))
+        assertFalse(packages.contains("npm"))
         assertFalse(packages.contains("vim"))
         assertFalse(packages.contains("nano"))
         assertEquals(packages.distinct(), packages)
     }
 
     @Test
-    fun packageProfilesCoverPythonNodeAndSshToolchains() {
-        assertTrue(
-            AlpinePackageProfiles.PYTHON.packages
-                .containsAll(listOf("python3", "py3-virtualenv", "pipx", "uv", "ruff")),
+    fun apkMirrorsKeepDomesticCandidatesBeforeOfficialFallback() {
+        assertEquals(
+            listOf(
+                "https://mirrors.aliyun.com/alpine",
+                "https://dl-cdn.alpinelinux.org/alpine",
+            ),
+            AlpineEnvironmentInstaller.APK_MIRROR_BASE_URLS,
         )
-        assertTrue(AlpinePackageProfiles.NODE.packages.containsAll(listOf("nodejs", "npm")))
-        assertTrue(AlpinePackageProfiles.SSH.packages.contains("openssh"))
-        AlpinePackageProfiles.ALL.forEach { profile ->
-            assertEquals(profile.packages.distinct(), profile.packages)
-            assertTrue(profile.markerName.startsWith(".eta-"))
-            assertTrue(profile.verifyCommands.isNotEmpty())
+        val script = AlpineEnvironmentInstaller.apkMirrorScript()
+        assertTrue(script.indexOf("mirrors.aliyun.com") < script.indexOf("dl-cdn.alpinelinux.org"))
+        assertFalse(script.contains("mirrors.ustc.edu.cn"))
+        assertFalse(script.contains("mirrors.tuna.tsinghua.edu.cn"))
+        assertTrue(script.contains("apk update && apk add --no-cache"))
+    }
+
+    @Test
+    fun apkMirrorScriptIsValidPosixShell() {
+        val process = ProcessBuilder("sh", "-n").start()
+        process.outputStream.use { output ->
+            output.write(AlpineEnvironmentInstaller.apkMirrorScript().toByteArray())
         }
-        assertEquals(AlpinePackageProfiles.ALL.map { it.id }.distinct(), AlpinePackageProfiles.ALL.map { it.id })
+        assertEquals(0, process.waitFor())
     }
 
     @Test
-    fun packageProfileReadinessHonoursMarkerRevisionAndLegacyBinaryInstalls() {
-        val rootfs = temporaryFolder.newFolder("python-rootfs")
-        File(rootfs, "bin").mkdirs()
-        File(rootfs, "bin/busybox").writeText("busybox")
-        File(rootfs, AlpineEnvironmentPaths.READY_MARKER).writeText("version=3.24.1\n")
-        File(rootfs, AlpineEnvironmentPaths.COMMON_TOOLS_MARKER).writeText(
-            "toolset=${AlpineEnvironmentPaths.TOOLSET_REVISION}\n",
+    fun packageProfilesCoverExpectedToolchains() {
+        val alpinePython = LinuxPackageProfiles.PYTHON.spec(LinuxDistribution.ALPINE)
+        val debianPython = LinuxPackageProfiles.PYTHON.spec(LinuxDistribution.DEBIAN)
+        assertTrue(alpinePython.packages.isEmpty())
+        assertEquals(ManagedLinuxTool.UV, alpinePython.managedTool)
+        assertTrue(alpinePython.setupScript.orEmpty().contains("uv python install --default --force"))
+        assertTrue(debianPython.packages.isEmpty())
+        assertEquals(ManagedLinuxTool.UV, debianPython.managedTool)
+        assertTrue(debianPython.setupScript.orEmpty().contains("UV_PYTHON_BIN_DIR=/usr/local/bin"))
+        assertTrue(
+            LinuxPackageProfiles.NODE.spec(LinuxDistribution.ALPINE).packages
+                .containsAll(listOf("nodejs-current", "npm")),
         )
-        val python = AlpinePackageProfiles.PYTHON
-
-        assertFalse(AlpineEnvironmentPaths.packageProfileReady(rootfs.absolutePath, python))
-
-        File(rootfs, python.markerName).writeText("profile=0\n")
-        assertFalse(AlpineEnvironmentPaths.packageProfileReady(rootfs.absolutePath, python))
-
-        File(rootfs, python.markerName).writeText("profile=${python.revision}\n")
-        assertTrue(AlpineEnvironmentPaths.packageProfileReady(rootfs.absolutePath, python))
-
-        // toolset 2 及更早的环境把 Python 装进基础工具集且无独立 marker，靠二进制存在性识别。
-        File(rootfs, python.markerName).delete()
-        File(rootfs, "usr/bin").mkdirs()
-        File(rootfs, "usr/bin/python3").writeText("python3")
-        assertFalse(AlpineEnvironmentPaths.packageProfileReady(rootfs.absolutePath, python))
-        File(rootfs, "usr/bin/uv").writeText("uv")
-        assertTrue(AlpineEnvironmentPaths.packageProfileReady(rootfs.absolutePath, python))
-    }
-
-    @Test
-    fun apkAnalysisReadinessRequiresCurrentMarkerAndManagedFiles() {
-        val rootfs = temporaryFolder.newFolder("analysis-rootfs")
-        File(rootfs, "bin").mkdirs()
-        File(rootfs, "bin/busybox").writeText("busybox")
-        File(rootfs, AlpineEnvironmentPaths.READY_MARKER).writeText("version=3.24.1\n")
-        File(rootfs, AlpineEnvironmentPaths.COMMON_TOOLS_MARKER).writeText(
-            "toolset=${AlpineEnvironmentPaths.TOOLSET_REVISION}\n",
+        assertEquals(
+            ManagedLinuxTool.NODE,
+            LinuxPackageProfiles.NODE.spec(LinuxDistribution.DEBIAN).managedTool,
         )
-        val current = File(rootfs, "opt/eta/apk-analysis/current")
-        listOf("bin/java", "jadx/bin/jadx", "bin/apktool", "bin/smali", "bin/baksmali").forEach { path ->
-            File(current, path).apply {
-                parentFile?.mkdirs()
-                writeText(path)
+        // Node 官方 arm64 二进制依赖 libatomic.so.1，Debian 规格必须补装 libatomic1。
+        assertTrue(
+            LinuxPackageProfiles.NODE.spec(LinuxDistribution.DEBIAN).packages.contains("libatomic1"),
+        )
+        // Kimi Code 是纯 JavaScript 的 npm 包，跑在 Node profile 之上；始终装最新正式版。
+        val kimi = LinuxPackageProfiles.KIMI
+        assertEquals(LinuxPackageProfiles.NODE, kimi.dependsOn)
+        LinuxDistribution.entries.forEach { distribution ->
+            val script = kimi.spec(distribution).setupScript.orEmpty()
+            assertTrue(script.contains("npm install -g"))
+            assertTrue(script.contains("@moonshot-ai/kimi-code@latest"))
+            assertTrue(script.contains("--prefix /usr/local"))
+            assertTrue(script.contains("registry.npmmirror.com"))
+        }
+        LinuxDistribution.entries.forEach { distribution ->
+            assertTrue(LinuxPackageProfiles.SSH.spec(distribution).packages.isNotEmpty())
+        }
+        LinuxPackageProfiles.ALL.forEach { profile ->
+            assertTrue(profile.markerName.startsWith(".eta-"))
+            profile.specs.values.forEach { spec ->
+                assertEquals(spec.packages.distinct(), spec.packages)
             }
         }
+        assertEquals(LinuxPackageProfiles.ALL.map { it.id }.distinct(), LinuxPackageProfiles.ALL.map { it.id })
+    }
+
+    @Test
+    fun packageProfileReadinessUsesItsOwnMarker() {
+        val rootfs = temporaryFolder.newFolder("profile-rootfs")
+        val profile = LinuxPackageProfiles.PYTHON
+
+        assertFalse(linuxPackageProfileReady(rootfs, profile))
+        File(rootfs, profile.markerName).writeText("profile=0\n")
+        assertFalse(linuxPackageProfileReady(rootfs, profile))
+        File(rootfs, profile.markerName).writeText("profile=${profile.revision}\n")
+        assertTrue(linuxPackageProfileReady(rootfs, profile))
+    }
+
+    @Test
+    fun pinnedUvAndNodeArtifactsUseLatestStableReleaseMetadata() {
+        val alpineUv = PinnedLinuxToolArtifacts.artifactFor(
+            ManagedLinuxTool.UV,
+            LinuxDistribution.ALPINE,
+            listOf("arm64-v8a"),
+        )
+        val debianUv = PinnedLinuxToolArtifacts.artifactFor(
+            ManagedLinuxTool.UV,
+            LinuxDistribution.DEBIAN,
+            listOf("arm64-v8a"),
+        )
+        val debianNode = PinnedLinuxToolArtifacts.artifactFor(
+            ManagedLinuxTool.NODE,
+            LinuxDistribution.DEBIAN,
+            listOf("arm64-v8a"),
+        )
+
+        requireNotNull(alpineUv)
+        requireNotNull(debianUv)
+        requireNotNull(debianNode)
+        assertEquals("0.12.7", alpineUv.version)
+        assertTrue(alpineUv.fileName.contains("musl"))
+        assertEquals("0.12.7", debianUv.version)
+        assertTrue(debianUv.fileName.contains("gnu"))
+        assertEquals("26.8.1", debianNode.version)
+        assertTrue(debianNode.url.startsWith("https://nodejs.org/"))
+        assertTrue(debianNode.preferredUrls.single().startsWith("https://cdn.npmmirror.com/"))
+        assertNull(
+            PinnedLinuxToolArtifacts.artifactFor(
+                ManagedLinuxTool.NODE,
+                LinuxDistribution.ALPINE,
+                listOf("arm64-v8a"),
+            ),
+        )
+    }
+
+    @Test
+    fun apkAnalysisReadinessUsesCurrentMarker() {
+        val rootfs = temporaryFolder.newFolder("analysis-rootfs")
 
         File(rootfs, AlpineEnvironmentPaths.APK_ANALYSIS_MARKER).writeText("profile=0\n")
-        assertFalse(AlpineEnvironmentPaths.apkAnalysisReady(rootfs.absolutePath))
+        assertFalse(linuxApkAnalysisReady(rootfs))
 
         File(rootfs, AlpineEnvironmentPaths.APK_ANALYSIS_MARKER).writeText(
             "profile=${AlpineEnvironmentPaths.APK_ANALYSIS_REVISION}\n",
         )
-        assertTrue(AlpineEnvironmentPaths.apkAnalysisReady(rootfs.absolutePath))
-        File(current, "jadx/bin/jadx").delete()
-        assertFalse(AlpineEnvironmentPaths.apkAnalysisReady(rootfs.absolutePath))
+        assertTrue(linuxApkAnalysisReady(rootfs))
     }
 }

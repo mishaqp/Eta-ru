@@ -3,11 +3,7 @@ package io.github.mangi.eta.agent.terminal
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-
-internal enum class TerminalEnvironment(val wireName: String) {
-    ANDROID("android"),
-    LINUX("linux"),
-}
+import kotlin.concurrent.thread
 
 /** 负责 Shell 进程的启动接纳、所有权识别、进程树终止与回收。 */
 internal class ShellProcessSupervisor(
@@ -18,7 +14,9 @@ internal class ShellProcessSupervisor(
         const val PROCESS_REAP_TIMEOUT_MS = 1_000L
         const val PROCESS_OWNERSHIP_WAIT_MS = 500L
         const val PROCESS_SIGNAL_TIMEOUT_MS = 1_000L
-        const val PROCESS_OWNER_ENV = "ETA_PROCESS_OWNER"
+        const val DEFAULT_PTY_COLS = 120
+        const val DEFAULT_PTY_ROWS = 40
+        const val PTY_TERM_TYPE = "xterm-256color"
 
         fun isAndroidRuntime(): Boolean =
             System.getProperty("java.vm.name").orEmpty().equals("Dalvik", ignoreCase = true) ||
@@ -42,10 +40,14 @@ internal class ShellProcessSupervisor(
         mergeStderr: Boolean,
         environment: TerminalEnvironment = TerminalEnvironment.ANDROID,
         linuxRootfsPath: String? = null,
+        linuxSharedMounts: List<SharedFolderMount> = emptyList(),
+        pty: Boolean = false,
+        ptyCols: Int = DEFAULT_PTY_COLS,
+        ptyRows: Int = DEFAULT_PTY_ROWS,
     ): Process? {
         if (isClosing) return null
         require(identity == "root" || identity == "user") { "identity 仅支持 root/user" }
-        require(environment != TerminalEnvironment.LINUX || identity == "root") {
+        require(!environment.isLinux || identity == "root") {
             "Linux 工具环境仅支持 root identity"
         }
         val ownershipFile = runCatching {
@@ -59,6 +61,10 @@ internal class ShellProcessSupervisor(
             identity = identity,
             environment = environment,
             linuxRootfsPath = linuxRootfsPath,
+            linuxSharedMounts = linuxSharedMounts,
+            pty = pty,
+            ptyCols = ptyCols,
+            ptyRows = ptyRows,
         )
         val process = runCatching {
             val builder = if (identity == "root") {
@@ -144,13 +150,17 @@ internal class ShellProcessSupervisor(
         unregisterProcess(process)
     }
 
-    private fun buildTrackedShellLauncher(
+    internal fun buildTrackedShellLauncher(
         ownershipFile: File,
         ownershipToken: String,
         command: String?,
         identity: String,
         environment: TerminalEnvironment,
         linuxRootfsPath: String?,
+        linuxSharedMounts: List<SharedFolderMount> = emptyList(),
+        pty: Boolean = false,
+        ptyCols: Int = DEFAULT_PTY_COLS,
+        ptyRows: Int = DEFAULT_PTY_ROWS,
     ): String {
         val managedCommand = command?.let { value ->
             "$value\neta_status=${'$'}?\nwait\nexit ${'$'}eta_status"
@@ -160,16 +170,18 @@ internal class ShellProcessSupervisor(
                 identity = identity,
                 command = managedCommand,
             )
-            TerminalEnvironment.LINUX -> buildLinuxPayload(
+            else -> buildLinuxPayload(
                 rootfsPath = requireNotNull(linuxRootfsPath) {
                     "Linux 工具环境 rootfs 未配置"
                 },
                 command = managedCommand,
+                sharedMounts = linuxSharedMounts,
+                termType = if (pty) PTY_TERM_TYPE else "dumb",
             )
         }
 
         val path = shellQuote(ownershipFile.absolutePath)
-        val exportOwner = "export $PROCESS_OWNER_ENV=${shellQuote(ownershipToken)}"
+        val exportOwner = "export $ETA_PROCESS_OWNER_ENV=${shellQuote(ownershipToken)}"
         val cleanupGroup =
                 "eta_cleanup_proc_group() { " +
                 "for stat_file in /proc/[0-9]*/stat; do " +
@@ -197,8 +209,39 @@ internal class ShellProcessSupervisor(
             "printf '%s unavailable\\n' \"${'$'}${'$'}\" > $path; exit 126"
         }
         val safeSetsid = shellQuote(setsidCommand)
+        if (pty) {
+            return buildPtyLauncher(
+                exportOwner = exportOwner,
+                path = path,
+                groupScript = groupScript,
+                safeSetsid = safeSetsid,
+                cols = ptyCols,
+                rows = ptyRows,
+            )
+        }
         return "$exportOwner; if command -v $safeSetsid >/dev/null 2>&1; then " +
             "exec $safeSetsid -w sh -c ${shellQuote(groupScript)}; else $fallback; fi"
+    }
+
+    /**
+     * PTY 控制台启动器：经 BusyBox script 为负载分配伪终端（stty 设定初始尺寸、TERM 宣告全彩）。
+     * script 缺失时写入 unavailable，由调用方拒绝接纳，控制台入口依赖 [ptySupported] 提前探测。
+     */
+    private fun buildPtyLauncher(
+        exportOwner: String,
+        path: String,
+        groupScript: String,
+        safeSetsid: String,
+        cols: Int,
+        rows: Int,
+    ): String {
+        val discovery = AndroidBusyBox.discoveryScript()
+        val ptyScript = "stty rows $rows cols $cols 2>/dev/null; export TERM=$PTY_TERM_TYPE; $groupScript"
+        val unavailable = "printf '%s unavailable\\n' \"\$\$\" > $path; exit 126"
+        val run = "\"\$eta_busybox\" script -qfc ${shellQuote(ptyScript)} /dev/null"
+        return "$exportOwner; $discovery; [ -n \"\$eta_busybox\" ] || { $unavailable; }; " +
+            "if command -v $safeSetsid >/dev/null 2>&1; then " +
+            "exec $safeSetsid -w $run; else $run; fi"
     }
 
     /** Root 会话优先进入 Magisk/KernelSU/APatch BusyBox standalone ash，补齐 Android PATH 外的 applet。 */
@@ -218,12 +261,24 @@ internal class ShellProcessSupervisor(
     /**
      * Linux 工具环境始终在独立 mount namespace 中启动，避免 bind mount 泄漏到 Android 全局。
      * chroot 不是安全沙箱；它只负责提供完整 Linux userland，Android 系统操作仍应走 android 环境。
+     * [sharedMounts] 在 namespace 建立时按当前配置逐个 bind 到 rootfs 的 workspace/mounts/<name>，
+     * 会话结束即随 namespace 回收，Android 侧不留需要卸载的全局挂载。
      */
-    internal fun buildLinuxPayload(rootfsPath: String, command: String?): String {
+    internal fun buildLinuxPayload(
+        rootfsPath: String,
+        command: String?,
+        sharedMounts: List<SharedFolderMount> = emptyList(),
+        termType: String = "dumb",
+    ): String {
         val rootfs = shellQuote(rootfsPath)
         val mode = if (command == null) "session" else "command"
         val payload = shellQuote(command.orEmpty())
-        val innerScript = """
+        // name 经 SharedFolderMounts 校验只含 [A-Za-z0-9._-]，可安全拼进双引号路径。
+        val mountsBlock = sharedMounts.joinToString("\n") { mount ->
+            "eta_mount_optional ${shellQuote(mount.sourcePath)} " +
+                "\"\$eta_rootfs${SharedFolderMounts.LINUX_MOUNTS_ROOT}/${mount.name}\" bind"
+        }
+        val innerScriptHead = """
             eta_rootfs=${'$'}1
             eta_busybox=${'$'}2
             eta_mode=${'$'}3
@@ -252,25 +307,49 @@ internal class ShellProcessSupervisor(
             eta_mount_required /data/local/tmp "${'$'}eta_rootfs/data/local/tmp" bind
             "${'$'}eta_busybox" mkdir -p /data/local/tmp/eta || exit 125
             eta_mount_required /data/local/tmp/eta "${'$'}eta_rootfs/workspace" bind
+        """.trimIndent()
+        val innerScriptTail = """
             if [ "${'$'}eta_mode" = command ]; then
-              exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /usr/bin/env -i \
-                HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=dumb NO_COLOR=1 \
+              if [ -x "${'$'}eta_rootfs/usr/bin/env" ]; then
+                exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /usr/bin/env -i \
+                  HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=$termType NO_COLOR=1 \
+                  LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+                  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+                  /bin/sh -lc "${'$'}eta_payload"
+              fi
+              exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /bin/busybox env -i \
+                HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=$termType NO_COLOR=1 \
                 LANG=C.UTF-8 LC_ALL=C.UTF-8 \
                 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
                 /bin/sh -lc "${'$'}eta_payload"
             fi
-            exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /usr/bin/env -i \
-              HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=dumb NO_COLOR=1 \
+            if [ -x "${'$'}eta_rootfs/usr/bin/env" ]; then
+              exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /usr/bin/env -i \
+                HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=$termType \
+                LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+                PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+                /bin/sh
+            fi
+            exec "${'$'}eta_busybox" chroot "${'$'}eta_rootfs" /bin/busybox env -i \
+              HOME=/root USER=root LOGNAME=root SHELL=/bin/sh TERM=$termType \
               LANG=C.UTF-8 LC_ALL=C.UTF-8 \
               PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
               /bin/sh
         """.trimIndent()
+        val innerScript = if (mountsBlock.isEmpty()) {
+            "$innerScriptHead\n$innerScriptTail"
+        } else {
+            "$innerScriptHead\n$mountsBlock\n$innerScriptTail"
+        }
         val discovery = AndroidBusyBox.discoveryScript()
+        // Alpine 的 /bin/sh 是指向 /bin/busybox 的绝对符号链接，Android 侧 -x 会按宿主根目录
+        // 解析链接目标而误判缺失；符号链接视为存在，真实可执行性由 chroot 后的内核解析兜底。
         return "$discovery; " +
             "[ -n \"${'$'}eta_busybox\" ] || { echo 'ETA_LINUX_BUSYBOX_MISSING' >&2; exit 127; }; " +
             "eta_rootfs=$rootfs; " +
-            "[ -f \"${'$'}eta_rootfs/${AlpineEnvironmentPaths.READY_MARKER}\" ] && " +
-            "[ -x \"${'$'}eta_rootfs/bin/busybox\" ] || " +
+            "[ -f \"${'$'}eta_rootfs/${LinuxEnvironmentPaths.READY_MARKER}\" ] && " +
+            "{ [ -x \"${'$'}eta_rootfs/bin/sh\" ] || [ -h \"${'$'}eta_rootfs/bin/sh\" ]; } && " +
+            "( [ -x \"${'$'}eta_rootfs/usr/bin/env\" ] || [ -x \"${'$'}eta_rootfs/bin/busybox\" ] ) || " +
             "{ echo 'ETA_LINUX_ENVIRONMENT_NOT_READY' >&2; exit 127; }; " +
             "\"${'$'}eta_busybox\" unshare -m --propagation private " +
             "\"${'$'}eta_busybox\" sh -c ${shellQuote(innerScript)} eta-linux " +
@@ -362,7 +441,7 @@ internal class ShellProcessSupervisor(
         requireOwnershipProof: Boolean,
     ) {
         val procPath = "/proc/${ownership.pid}"
-        val expectedOwner = shellQuote("$PROCESS_OWNER_ENV=${metadata.ownershipToken}")
+        val expectedOwner = shellQuote("$ETA_PROCESS_OWNER_ENV=${metadata.ownershipToken}")
         val guardedCommand = if (requireOwnershipProof) {
             "[ -e $procPath ] || exit 0; " +
                 "[ -r $procPath/environ ] || exit 0; " +
@@ -404,5 +483,97 @@ internal class ShellProcessSupervisor(
     )
 }
 
+/** 写入托管进程环境块的归属标记；巡检与停止前用它防止 PID 复用误杀。 */
+internal const val ETA_PROCESS_OWNER_ENV = "ETA_PROCESS_OWNER"
+
 internal fun shellQuote(value: String): String =
     "'" + value.replace("'", "'\\''") + "'"
+
+internal data class OneShotShellResult(
+    val exitCode: Int,
+    val output: ByteArray,
+    val stderr: ByteArray,
+)
+
+/**
+ * 探测控制台 PTY 的前提：Root 侧 BusyBox 带 script applet。
+ * 用 --list 精确匹配 applet 名；--help 的首行是版本横幅，不含 applet 名。
+ * 只在控制台入口调用，不在进程启动热路径使用。
+ */
+internal fun ptySupported(processSupervisor: ShellProcessSupervisor): Boolean {
+    val command = AndroidBusyBox.discoveryScript() +
+        "; [ -n \"\$eta_busybox\" ] || exit 1; \"\$eta_busybox\" --list 2>/dev/null | grep -qx script"
+    val result = runOneShotShell(
+        processSupervisor = processSupervisor,
+        identity = "root",
+        command = command,
+        timeoutSeconds = 10,
+    )
+    return result.exitCode == 0
+}
+
+/**
+ * 一次性 Shell 命令原语：带超时回收与有界输出收集。调用方负责命令构造与输出解释；
+ * 超时或 supervisor 关闭时整棵进程树由 [ShellProcessSupervisor] 回收。
+ */
+internal fun runOneShotShell(
+    processSupervisor: ShellProcessSupervisor,
+    identity: String,
+    command: String,
+    timeoutSeconds: Long,
+    stdin: ByteArray? = null,
+    environment: TerminalEnvironment = TerminalEnvironment.ANDROID,
+    linuxRootfsPath: String? = null,
+    linuxSharedMounts: List<SharedFolderMount> = emptyList(),
+): OneShotShellResult {
+    val process = processSupervisor.startShellProcess(
+        identity = identity,
+        command = command,
+        mergeStderr = false,
+        environment = environment,
+        linuxRootfsPath = linuxRootfsPath,
+        linuxSharedMounts = linuxSharedMounts,
+    ) ?: return OneShotShellResult(
+        if (processSupervisor.isClosing) -3 else -1,
+        ByteArray(0),
+        if (processSupervisor.isClosing) "操作已取消".toByteArray() else "无法启动进程".toByteArray(),
+    )
+
+    try {
+        val output = ByteArrayOutputCollector()
+        val stderr = ByteArrayOutputCollector()
+        val outputThread = thread(name = "agent-terminal-stdout") {
+            process.inputStream.use { input -> output.readFrom(input) }
+        }
+        val stderrThread = thread(name = "agent-terminal-stderr") {
+            process.errorStream.use { input -> stderr.readFrom(input) }
+        }
+        val stdinThread = thread(name = "agent-terminal-stdin") {
+            process.outputStream.use { out ->
+                if (stdin != null) out.write(stdin)
+            }
+        }
+
+        val finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+        if (!finished) {
+            processSupervisor.terminateProcessTree(process)
+            outputThread.join(500)
+            stderrThread.join(500)
+            stdinThread.join(500)
+            processSupervisor.reapProcess(process)
+            return OneShotShellResult(-2, output.bytes(), "命令执行超时".toByteArray())
+        }
+
+        outputThread.join(500)
+        stderrThread.join(500)
+        stdinThread.join(500)
+        return OneShotShellResult(process.exitValue(), output.bytes(), stderr.bytes())
+    } finally {
+        if (processSupervisor.isClosing) {
+            processSupervisor.terminateAndReap(process)
+        } else {
+            processSupervisor.reapProcess(process)
+        }
+        processSupervisor.unregisterProcess(process)
+    }
+}

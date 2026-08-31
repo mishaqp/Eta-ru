@@ -37,13 +37,29 @@ internal sealed interface ApkAnalysisInstallResult {
     data class Failed(val stage: ApkAnalysisInstallStage) : ApkAnalysisInstallResult
 }
 
-/** 安装架构无关的 Java 分析工具；APK 资源回编译仍需单独的 ARM64 AAPT2 支持。 */
-internal class AlpineApkAnalysisInstaller(
+internal fun linuxApkAnalysisReady(rootfs: File): Boolean {
+    val marker = File(rootfs, AlpineEnvironmentPaths.APK_ANALYSIS_MARKER)
+    if (!marker.isFile) return false
+    return marker.useLines { lines ->
+        lines.any { line -> line.trim() == "profile=${AlpineEnvironmentPaths.APK_ANALYSIS_REVISION}" }
+    }
+}
+
+internal fun linuxApkJavaInstallCommand(distribution: LinuxDistribution): String =
+    when (distribution) {
+        LinuxDistribution.ALPINE -> "/usr/local/bin/eta-apk install openjdk25-jdk"
+        LinuxDistribution.DEBIAN -> "/usr/local/bin/eta-apt install openjdk-25-jdk-headless"
+    }
+
+/** 为当前 Linux 发行版安装 Java 分析工具；APK 资源回编译仍需 ARM64 AAPT2 支持。 */
+internal class LinuxApkAnalysisInstaller(
     private val context: Context,
+    private val distribution: LinuxDistribution,
     private val artifactDownloader: VerifiedArtifactDownloader = VerifiedArtifactDownloader(),
 ) {
-    fun isReady(): Boolean =
-        AlpineEnvironmentPaths.apkAnalysisReady(AlpineEnvironmentPaths.rootfsDir(context).absolutePath)
+    private val rootfs = LinuxEnvironmentPaths.rootfsDir(context, distribution)
+
+    fun isReady(): Boolean = linuxApkAnalysisReady(rootfs)
 
     suspend fun install(
         onProgress: suspend (ApkAnalysisInstallProgress) -> Unit = {},
@@ -60,9 +76,10 @@ internal class AlpineApkAnalysisInstaller(
         onProgress: suspend (ApkAnalysisInstallProgress) -> Unit,
     ): ApkAnalysisInstallResult = withContext(Dispatchers.IO) {
         if (isReady()) return@withContext ApkAnalysisInstallResult.AlreadyReady
-        val rootfs = AlpineEnvironmentPaths.rootfsDir(context)
         onProgress(ApkAnalysisInstallProgress(ApkAnalysisInstallStage.CHECKING))
-        if (!AlpineEnvironmentPaths.commonToolsReady(rootfs.absolutePath)) {
+        if (!LinuxEnvironmentPaths.rootfsReady(rootfs.absolutePath) ||
+            !File(rootfs, AlpineEnvironmentPaths.COMMON_TOOLS_MARKER).isFile
+        ) {
             return@withContext ApkAnalysisInstallResult.EnvironmentNotReady
         }
         val availableBytes = rootfs.parentFile?.usableSpace ?: context.filesDir.usableSpace
@@ -193,9 +210,9 @@ internal class AlpineApkAnalysisInstaller(
 
     private suspend fun installJava(rootfs: File): Boolean {
         val result = InstallerShellRunner.run(
-            command = "apk add --no-cache openjdk17-jdk",
+            command = linuxApkJavaInstallCommand(distribution),
             timeoutSeconds = 900,
-            environment = TerminalEnvironment.LINUX,
+            environment = distribution.terminalEnvironment,
             linuxRootfsPath = rootfs.absolutePath,
         )
         AndroidAgentLogger.info(
@@ -288,7 +305,7 @@ internal class AlpineApkAnalysisInstaller(
         val result = InstallerShellRunner.run(
             command = command,
             timeoutSeconds = 90,
-            environment = TerminalEnvironment.LINUX,
+            environment = distribution.terminalEnvironment,
             linuxRootfsPath = rootfs.absolutePath,
         )
         AndroidAgentLogger.info(
@@ -328,15 +345,14 @@ internal class AlpineApkAnalysisInstaller(
 
     companion object {
         private const val PROFILE_ID = "apk-analysis"
-        private const val JADX_VERSION = "1.5.5"
-        private const val APKTOOL_VERSION = "3.0.2"
-        private const val SMALI_VERSION = "3.0.9"
-        private const val MAX_JADX_EXTRACTED_BYTES = 80L * 1024L * 1024L
+        private const val JADX_VERSION = "1.5.6"
+        private const val APKTOOL_VERSION = "3.0.3"
+        private const val SMALI_VERSION = "3.0.10"
+        private const val MAX_JADX_EXTRACTED_BYTES = 128L * 1024L * 1024L
         internal const val MIN_AVAILABLE_BYTES = 768L * 1024L * 1024L
 
         private val installMutex = Mutex()
         private val GITHUB_PROXY_PREFIXES = listOf(
-            "https://ghfast.top/",
             "https://gh-proxy.com/",
         )
 
@@ -346,8 +362,8 @@ internal class AlpineApkAnalysisInstaller(
             fileName = "jadx-$JADX_VERSION.zip",
             repository = "skylot/jadx",
             tag = "v$JADX_VERSION",
-            sha256 = "38a5766d3c8170c41566b4b13ea0ede2430e3008421af4927235c2880234d51a",
-            sizeBytes = 58_379_804L,
+            sha256 = "545ea2be9c242511bc145755cf4bda2485ade42966e096f8b4d3da2a230e8974",
+            sizeBytes = 72_646_741L,
         )
         internal val APKTOOL_ARTIFACT = githubReleaseArtifact(
             id = "apktool",
@@ -355,8 +371,8 @@ internal class AlpineApkAnalysisInstaller(
             fileName = "apktool_$APKTOOL_VERSION.jar",
             repository = "iBotPeaches/Apktool",
             tag = "v$APKTOOL_VERSION",
-            sha256 = "eee4669a704a14e0623407e6701b0b91887e61e1e4049cb7a82833e14ae8b5fd",
-            sizeBytes = 15_476_804L,
+            sha256 = "dbf930b076c6b9be08d57c449cacefc3bdd6b71ebd59b3066fc0e1f5b14f9423",
+            sizeBytes = 15_478_013L,
         )
         internal val SMALI_ARTIFACT = githubReleaseArtifact(
             id = "smali",
@@ -364,8 +380,8 @@ internal class AlpineApkAnalysisInstaller(
             fileName = "smali-$SMALI_VERSION-fat-release.jar",
             repository = "baksmali/smali",
             tag = SMALI_VERSION,
-            sha256 = "b5e2aa019c49ddaf7b2cace80f60ebbfd61f7ac18e7a3dea1075bec8779cc37a",
-            sizeBytes = 5_301_841L,
+            sha256 = "32fa0e88a6c397b3922201adf5f3e534fbaed5a663c71d0c558c3ddce0af844a",
+            sizeBytes = 5_384_623L,
         )
         internal val BAKSMALI_ARTIFACT = githubReleaseArtifact(
             id = "baksmali",
@@ -373,8 +389,8 @@ internal class AlpineApkAnalysisInstaller(
             fileName = "baksmali-$SMALI_VERSION-fat-release.jar",
             repository = "baksmali/smali",
             tag = SMALI_VERSION,
-            sha256 = "1b206070701b2145bd1e6204abd6c14fea877f335486845cd4df149bf5f79c2e",
-            sizeBytes = 4_723_147L,
+            sha256 = "37ae4a41a8886e15c20b8362fa4250f96bbdb55e1a608199ad8b5dff068b588f",
+            sizeBytes = 4_447_943L,
         )
         internal val ARTIFACTS = listOf(
             JADX_ARTIFACT,
@@ -400,7 +416,7 @@ internal class AlpineApkAnalysisInstaller(
                 url = officialUrl,
                 sha256 = sha256,
                 sizeBytes = sizeBytes,
-                fallbackUrls = GITHUB_PROXY_PREFIXES.map { prefix -> prefix + officialUrl },
+                preferredUrls = GITHUB_PROXY_PREFIXES.map { prefix -> prefix + officialUrl },
             )
         }
 
@@ -417,9 +433,7 @@ internal class AlpineApkAnalysisInstaller(
 
         internal val JAVA_WRAPPER = """
             #!/bin/sh
-            export JAVA_HOME=/usr/lib/jvm/default-jvm
-            export LD_LIBRARY_PATH=/usr/lib/jvm/default-jvm/lib:/usr/lib/jvm/default-jvm/lib/server${'$'}{LD_LIBRARY_PATH:+:${'$'}LD_LIBRARY_PATH}
-            exec /usr/lib/jvm/default-jvm/bin/java "${'$'}@"
+            exec /usr/bin/java "${'$'}@"
         """.trimIndent() + "\n"
 
         private fun javaJarWrapper(fileName: String): String =

@@ -213,6 +213,44 @@ class RootShellTerminalControllerTest {
         } finally {
             readyController.closeAll()
         }
+
+        var requestedEnvironment: TerminalEnvironment? = null
+        val debianController = RootShellTerminalController(
+            logger = NoopLogger,
+            linuxRootfsPathProvider = { environment ->
+                requestedEnvironment = environment
+                if (environment == TerminalEnvironment.DEBIAN) {
+                    File(temporaryFolder.root, "missing-debian-rootfs").absolutePath
+                } else {
+                    null
+                }
+            },
+            selectedLinuxEnvironmentProvider = { TerminalEnvironment.DEBIAN },
+        )
+        try {
+            val result = JSONObject(
+                debianController.terminalAction(
+                    action = "open_and_exec",
+                    command = "python3 --version",
+                    cwd = null,
+                    timeoutMs = 5_000,
+                    identity = "root",
+                    mergeStderr = false,
+                    sessionId = null,
+                    jobId = null,
+                    async = false,
+                    offsetChars = 0,
+                    maxChars = 8_000,
+                    closeIfDone = false,
+                    environment = "linux",
+                ),
+            )
+            assertFalse(result.toString(), result.getBoolean("ok"))
+            assertEquals("LINUX_ENVIRONMENT_NOT_READY", result.getString("code"))
+            assertEquals(TerminalEnvironment.DEBIAN, requestedEnvironment)
+        } finally {
+            debianController.closeAll()
+        }
     }
 
     private object NoopLogger : AgentLogger {
