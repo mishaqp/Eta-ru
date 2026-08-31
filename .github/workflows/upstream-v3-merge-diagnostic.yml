@@ -15,9 +15,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Diagnose merge conflicts
-        id: merge
         shell: bash
         run: |
+          git config user.name 'Eta upstream sync'
+          git config user.email 'eta-sync@users.noreply.github.com'
           git remote add upstream https://github.com/Mangi-11/Eta.git
           git fetch --no-tags upstream v3.0.0
           set +e
