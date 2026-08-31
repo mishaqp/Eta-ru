@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="conversation_assistant_history_summary">Только диалоги выбранного ассистента</string>
+  <string name="conversation_assistant_history_empty">У ассистента «%1$s» пока нет чатов</string>
+</resources>

@@ -68,6 +68,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import com.composables.icons.lucide.R as LucideR
 import io.github.mangi.eta.R
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
 import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import kotlinx.coroutines.flow.collectLatest
@@ -135,6 +136,9 @@ fun ConversationSidePaneScaffold(
     backHandlerEnabled: Boolean,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
+    onAssistantSelected: (String) -> Unit,
     onSearchChange: (String) -> Unit,
     onConversationSelected: (String) -> Unit,
     onConversationRename: (ConversationSummaryUi) -> Unit,
@@ -226,6 +230,9 @@ fun ConversationSidePaneScaffold(
         ConversationPanePanel(
             state = state,
             width = paneWidth,
+            assistantProfiles = assistantProfiles,
+            selectedAssistantId = selectedAssistantId,
+            onAssistantSelected = onAssistantSelected,
             onSearchChange = onSearchChange,
             onConversationSelected = onConversationSelected,
             onConversationRename = onConversationRename,
@@ -315,6 +322,9 @@ fun ConversationSidePaneScaffold(
 private fun ConversationPanePanel(
     state: ConversationPaneUiState,
     width: androidx.compose.ui.unit.Dp,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
+    onAssistantSelected: (String) -> Unit,
     onSearchChange: (String) -> Unit,
     onConversationSelected: (String) -> Unit,
     onConversationRename: (ConversationSummaryUi) -> Unit,
@@ -338,6 +348,12 @@ private fun ConversationPanePanel(
         }
     }
     val groups = remember(visibleConversations) { visibleConversations.groupForDrawer() }
+    val enabledProfiles = remember(assistantProfiles) {
+        assistantProfiles.filter { it.enabled }
+    }
+    val selectedProfile = remember(enabledProfiles, selectedAssistantId) {
+        enabledProfiles.firstOrNull { it.id == selectedAssistantId }
+    }
 
     Surface(
         modifier = modifier
@@ -357,6 +373,14 @@ private fun ConversationPanePanel(
                 query = state.searchQuery,
                 onSearchChange = onSearchChange,
             )
+            if (enabledProfiles.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                AssistantHistorySwitcher(
+                    profiles = enabledProfiles,
+                    selectedAssistantId = selectedAssistantId,
+                    onAssistantSelected = onAssistantSelected,
+                )
+            }
             Spacer(modifier = Modifier.height(DrawerMetrics.AfterActionBar))
             LazyColumn(
                 modifier = Modifier
@@ -369,7 +393,10 @@ private fun ConversationPanePanel(
             ) {
                 if (visibleConversations.isEmpty()) {
                     item {
-                        EmptyConversations(isSearching = query.isNotBlank())
+                        EmptyConversations(
+                            isSearching = query.isNotBlank(),
+                            assistantName = selectedProfile?.name,
+                        )
                     }
                 } else {
                     groups.forEach { group ->
@@ -400,6 +427,54 @@ private fun ConversationPanePanel(
                 onOpenPermissions = onOpenPermissions,
             )
             Spacer(modifier = Modifier.height(DrawerMetrics.BottomInset))
+        }
+    }
+}
+
+@Composable
+private fun AssistantHistorySwitcher(
+    profiles: List<AssistantProfile>,
+    selectedAssistantId: String,
+    onAssistantSelected: (String) -> Unit,
+) {
+    var showPopup by remember { mutableStateOf(false) }
+    val selected = profiles.firstOrNull { it.id == selectedAssistantId } ?: profiles.first()
+    val dismiss = { showPopup = false }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        top.yukonga.miuix.kmp.preference.ArrowPreference(
+            title = selected.name,
+            summary = stringResource(R.string.conversation_assistant_history_summary),
+            startAction = {
+                Icon(
+                    painter = painterResource(LucideR.drawable.lucide_ic_bot),
+                    contentDescription = null,
+                    modifier = Modifier.size(DrawerMetrics.ActionIconSize),
+                    tint = MiuixTheme.colorScheme.primary,
+                )
+            },
+            onClick = { showPopup = true },
+        )
+        WindowListPopup(
+            show = showPopup && profiles.size > 1,
+            popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
+            alignment = PopupPositionProvider.Align.BottomEnd,
+            onDismissRequest = dismiss,
+        ) {
+            ListPopupColumn {
+                profiles.forEachIndexed { index, profile ->
+                    DropdownImpl(
+                        text = profile.name,
+                        optionSize = profiles.size,
+                        isSelected = profile.id == selected.id,
+                        index = index,
+                        onSelectedIndexChange = {
+                            dismiss()
+                            onAssistantSelected(profile.id)
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -596,11 +671,20 @@ private fun ConversationTextRow(
 }
 
 @Composable
-private fun EmptyConversations(isSearching: Boolean) {
+private fun EmptyConversations(
+    isSearching: Boolean,
+    assistantName: String?,
+) {
+    val text = when {
+        isSearching -> stringResource(R.string.conversation_no_results)
+        assistantName != null -> stringResource(
+            R.string.conversation_assistant_history_empty,
+            assistantName,
+        )
+        else -> stringResource(R.string.conversation_empty)
+    }
     Text(
-        text = stringResource(
-            if (isSearching) R.string.conversation_no_results else R.string.conversation_empty,
-        ),
+        text = text,
         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         style = MiuixTheme.textStyles.body2,
         fontWeight = FontWeight.Medium,

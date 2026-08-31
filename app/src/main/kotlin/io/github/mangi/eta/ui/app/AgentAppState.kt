@@ -228,6 +228,7 @@ internal class AgentAppState(
                     if (selected != selectedAssistantId) {
                         selectedAssistantId = selected
                     }
+                    refreshConversationSummaries()
                 }
             }
         }
@@ -875,9 +876,25 @@ internal class AgentAppState(
         val profile = assistantProfiles.firstOrNull {
             it.id == assistantId && it.enabled
         } ?: return
+        if (profile.id == selectedAssistantId) return
         selectedAssistantId = profile.id
-        val conversationId = selectedConversationId ?: return
-        conversationAssistantIds = conversationAssistantIds + (conversationId to profile.id)
+        val conversationId = conversationsById.keys
+            .asSequence()
+            .filter { conversationAssistantIds[it] == profile.id }
+            .maxByOrNull { conversationUpdatedAt[it] ?: 0L }
+        if (conversationId != null) {
+            selectConversation(conversationId)
+        } else {
+            // A conversation belongs to the assistant that created it. Switching to an
+            // assistant without history opens a clean draft instead of mixing histories.
+            selectedConversationId = null
+            homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
+            conversationPaneState = conversationPaneState.copy(
+                selectedConversationId = null,
+                searchQuery = "",
+            )
+            refreshConversationSummaries()
+        }
         persistConversations()
     }
 
@@ -2227,13 +2244,19 @@ internal class AgentAppState(
                     isActiveRun = state.isStreaming,
                 )
             }
+        val scopedSummaries = summaries.filter { summary ->
+            val assistantId = conversationAssistantIds[summary.id]
+                ?.takeIf(String::isNotBlank)
+                ?: AssistantProfileDefaults.DEFAULT_ID
+            assistantId == selectedAssistantId
+        }
         val query = conversationPaneState.searchQuery.trim()
         conversationPaneState = conversationPaneState.copy(
             selectedConversationId = selectedConversationId,
             conversations = if (query.isBlank()) {
-                summaries
+                scopedSummaries
             } else {
-                summaries.filter {
+                scopedSummaries.filter {
                     it.title.contains(query, ignoreCase = true) ||
                         it.preview.contains(query, ignoreCase = true)
                 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.composables.icons.lucide.R as LucideR
 import io.github.mangi.eta.R
+import io.github.mangi.eta.data.model.AssistantProfile
 import io.github.mangi.eta.ui.components.AdaptiveTopAppBar
 import io.github.mangi.eta.ui.components.ConversationSidePaneScaffold
 import io.github.mangi.eta.ui.components.MiuixBackButton
@@ -42,6 +43,9 @@ fun AgentAppShell(
     onBack: () -> Unit,
     onOpenConversationPane: () -> Unit,
     onDismissConversationPane: () -> Unit,
+    assistantProfiles: List<AssistantProfile>,
+    selectedAssistantId: String,
+    onAssistantSelected: (String) -> Unit,
     onSearchConversations: (String) -> Unit,
     onNewConversation: () -> Unit,
     onSelectConversation: (String) -> Unit,
@@ -98,6 +102,9 @@ fun AgentAppShell(
                 backHandlerEnabled = isCurrentRoute,
                 onOpen = onOpenConversationPane,
                 onDismiss = onDismissConversationPane,
+                assistantProfiles = assistantProfiles,
+                selectedAssistantId = selectedAssistantId,
+                onAssistantSelected = onAssistantSelected,
                 onSearchChange = onSearchConversations,
                 onConversationSelected = onSelectConversation,
                 onConversationRename = onConversationRename,

@@ -110,6 +110,8 @@
   <string name="conversation_search_hint">Search conversations</string>
   <string name="conversation_empty">No conversations yet</string>
   <string name="conversation_no_results">No matching conversations</string>
+  <string name="conversation_assistant_history_summary">Only this assistant's conversations</string>
+  <string name="conversation_assistant_history_empty">No conversations for %1$s yet</string>
   <string name="conversation_rename_title">Rename conversation</string>
   <string name="conversation_rename_hint">Conversation name</string>
   <string name="conversation_delete_title">Delete conversation?</string>
