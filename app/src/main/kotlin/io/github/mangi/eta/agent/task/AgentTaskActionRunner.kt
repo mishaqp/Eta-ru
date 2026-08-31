@@ -4,6 +4,7 @@ import android.content.Context
 import io.github.mangi.eta.agent.model.AgentModelClient
 import io.github.mangi.eta.agent.tool.AgentLocalTools
 import io.github.mangi.eta.core.AndroidAgentLogger
+import io.github.mangi.eta.data.db.AgentTaskOutcomes
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException

@@ -71,10 +71,19 @@ internal class AgentTaskBootReceiver : BroadcastReceiver() {
             task: AgentTaskEntity,
             now: Long,
         ) {
-            val dueAt = task.nextRunAt ?: return scheduler.schedule(task)
-            if (dueAt > now) return scheduler.schedule(task)
+            val dueAt = task.nextRunAt ?: run {
+                scheduler.schedule(task)
+                return
+            }
+            if (dueAt > now) {
+                scheduler.schedule(task)
+                return
+            }
             val missed = missedSlots(task, now)
-            if (missed.isEmpty()) return scheduler.schedule(task)
+            if (missed.isEmpty()) {
+                scheduler.schedule(task)
+                return
+            }
 
             when (task.catchup) {
                 AgentTaskCatchup.SKIP -> {

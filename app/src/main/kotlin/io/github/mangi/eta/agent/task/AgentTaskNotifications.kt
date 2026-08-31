@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import io.github.mangi.eta.R
+import io.github.mangi.eta.data.db.AgentTaskOutcomes
 import io.github.mangi.eta.ui.MainActivity
 
 internal object AgentTaskNotifications {
