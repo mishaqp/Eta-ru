@@ -819,6 +819,10 @@ internal class AgentAppState(
             ?.takeIf(String::isNotBlank)
             ?: AssistantProfileDefaults.DEFAULT_ID
         conversationPaneState = conversationPaneState.copy(selectedConversationId = conversationId)
+        // Selecting a conversation can also change the active assistant (for example,
+        // after choosing another profile from the history drawer). Rebuild the drawer
+        // contents immediately so it cannot retain the previous profile's chats.
+        refreshConversationSummaries()
         persistConversations()
     }
 
