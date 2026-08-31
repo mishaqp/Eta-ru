@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Handler
 import android.os.Looper
 import io.github.mangi.eta.agent.skill.SkillRuntime
+import io.github.mangi.eta.agent.task.AgentTaskBootReceiver
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.core.safeLogType
@@ -55,6 +56,15 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         CodexAccountRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
+        applicationScope.launch {
+            runCatching {
+                AgentTaskBootReceiver.recover(this@EtaApp)
+            }.onFailure { throwable ->
+                AndroidAgentLogger.warn(
+                    "Agent task recovery startup failed: type=${throwable.safeLogType()}"
+                )
+            }
+        }
         applicationScope.launch {
             runCatching {
                 SkillRuntime.createIndexService(this@EtaApp).listInstalledSkills()

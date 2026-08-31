@@ -225,6 +225,18 @@ internal fun SettingsScreen(
                     )
                     PrefDivider()
                     ArrowPreference(
+                        title = stringResource(R.string.route_tasks),
+                        summary = stringResource(R.string.tasks_settings_summary),
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_alarm_clock,
+                                tint = PixelOrange,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.Tasks) },
+                    )
+                    PrefDivider()
+                    ArrowPreference(
                         title = stringResource(R.string.route_skills),
                         startAction = {
                             TintedIcon(

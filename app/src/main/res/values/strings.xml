@@ -1068,4 +1068,14 @@
   <string name="data_backup_imported">Imported %1$d conversations and %2$d providers</string>
   <string name="data_backup_failed">Backup operation failed</string>
   <string name="data_backup_file_open_failed">Unable to open the selected file</string>
+  <string name="route_tasks">Tasks</string>
+  <string name="tasks_title">Persistent background tasks</string>
+  <string name="tasks_description">Tasks survive app restarts, reboots, and updates. Ask Eta to schedule a one-time or recurring task in chat.</string>
+  <string name="tasks_empty">No background tasks</string>
+  <string name="tasks_empty_summary">Say “remind me” or ask Eta to run an action later.</string>
+  <string name="tasks_configured">Configured tasks: %d</string>
+  <string name="tasks_settings_summary">Persistent schedules and execution history</string>
+  <string name="tasks_run_now">Run now</string>
+  <string name="tasks_delete_title">Delete task?</string>
+  <string name="tasks_delete_summary">“%1$s” and its execution history will be deleted.</string>
 </resources>

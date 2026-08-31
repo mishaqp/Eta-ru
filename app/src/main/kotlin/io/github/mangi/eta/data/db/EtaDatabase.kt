@@ -22,8 +22,10 @@ import androidx.room.migration.Migration
         RuntimeInFlightEventEntity::class,
         SkillRegistryEntity::class,
         McpServerEntity::class,
+        AgentTaskEntity::class,
+        AgentTaskRunEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = false,
 )
 internal abstract class EtaDatabase : RoomDatabase() {
@@ -32,6 +34,8 @@ internal abstract class EtaDatabase : RoomDatabase() {
     abstract fun runtimeRunDao(): RuntimeRunDao
     abstract fun skillDao(): SkillDao
     abstract fun mcpServerDao(): McpServerDao
+    abstract fun agentTaskDao(): AgentTaskDao
+    abstract fun agentTaskRunDao(): AgentTaskRunDao
 
     companion object {
         @Volatile
@@ -57,6 +61,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
                         MIGRATION_15_16,
                         MIGRATION_16_17,
                         MIGRATION_17_18,
+                        MIGRATION_18_19,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
@@ -101,6 +106,67 @@ internal abstract class EtaDatabase : RoomDatabase() {
 
         internal val MIGRATION_17_18 = Migration(17, 18) { database ->
             database.execSQL("ALTER TABLE mcp_servers ADD COLUMN tools_expire_at INTEGER")
+        }
+
+        internal val MIGRATION_18_19 = Migration(18, 19) { database ->
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS agent_tasks (" +
+                    "id TEXT NOT NULL, " +
+                    "name TEXT NOT NULL, " +
+                    "description TEXT, " +
+                    "mode TEXT NOT NULL, " +
+                    "prompt TEXT, " +
+                    "actions_json TEXT, " +
+                    "schedule_type TEXT NOT NULL, " +
+                    "at_unix_ms INTEGER, " +
+                    "cron_expression TEXT, " +
+                    "timezone TEXT, " +
+                    "start_at_unix_ms INTEGER, " +
+                    "end_at_unix_ms INTEGER, " +
+                    "enabled INTEGER NOT NULL, " +
+                    "created_at INTEGER NOT NULL, " +
+                    "updated_at INTEGER NOT NULL, " +
+                    "last_run_at INTEGER, " +
+                    "next_run_at INTEGER, " +
+                    "last_outcome TEXT, " +
+                    "last_error TEXT, " +
+                    "runs_so_far INTEGER NOT NULL, " +
+                    "max_runs INTEGER, " +
+                    "catchup TEXT NOT NULL, " +
+                    "notify_on_success INTEGER NOT NULL, " +
+                    "PRIMARY KEY(id))"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_agent_tasks_enabled " +
+                    "ON agent_tasks(enabled)"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_agent_tasks_next_run_at " +
+                    "ON agent_tasks(next_run_at)"
+            )
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS agent_task_runs (" +
+                    "id TEXT NOT NULL, " +
+                    "task_id TEXT NOT NULL, " +
+                    "mode TEXT NOT NULL, " +
+                    "scheduled_at INTEGER NOT NULL, " +
+                    "started_at INTEGER NOT NULL, " +
+                    "finished_at INTEGER, " +
+                    "outcome TEXT NOT NULL, " +
+                    "manual INTEGER NOT NULL DEFAULT 0, " +
+                    "runtime_run_id TEXT, " +
+                    "result TEXT, " +
+                    "error TEXT, " +
+                    "PRIMARY KEY(id))"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_agent_task_runs_task_id_started_at " +
+                    "ON agent_task_runs(task_id, started_at)"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_agent_task_runs_task_id_outcome " +
+                    "ON agent_task_runs(task_id, outcome)"
+            )
         }
 
         internal val MIGRATION_7_8 = Migration(7, 8) { database ->

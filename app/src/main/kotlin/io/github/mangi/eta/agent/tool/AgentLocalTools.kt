@@ -38,6 +38,8 @@ import io.github.mangi.eta.data.repository.AgentMemoryException
 import io.github.mangi.eta.data.repository.AgentMemoryMutation
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
 import io.github.mangi.eta.data.repository.AgentMemoryWriteResult
+import io.github.mangi.eta.agent.task.AgentTaskToolNames
+import io.github.mangi.eta.agent.task.AgentTaskTools
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -133,6 +135,7 @@ internal class AgentLocalTools(
                 }
             }
             when (toolCall.name) {
+                in AgentTaskToolNames.ALL -> AgentTaskTools.execute(context, toolCall.name, args)
                 "get_current_context" -> textResult(DeviceContextTool.current(context))
                 "search_apps" -> textResult(searchApps(args))
                 "launch_app" -> textResult(launchApp(args))
