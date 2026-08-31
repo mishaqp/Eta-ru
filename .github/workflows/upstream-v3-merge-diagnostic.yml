@@ -33,6 +33,10 @@ jobs:
           printf 'conflicted\n' > merge-status.txt
           git diff --name-only --diff-filter=U > conflict-files.txt
           git diff --cc > merge-conflicts.diff
+          while IFS= read -r path; do
+            mkdir -p "conflicts/$(dirname "$path")"
+            cp "$path" "conflicts/$path"
+          done < conflict-files.txt
           exit "$merge_status"
       - name: Upload diagnostic
         if: always()
@@ -43,4 +47,5 @@ jobs:
             merge-status.txt
             conflict-files.txt
             merge-conflicts.diff
+            conflicts
           if-no-files-found: warn
