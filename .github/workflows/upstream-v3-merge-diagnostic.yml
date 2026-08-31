@@ -1,0 +1,45 @@
+name: Upstream v3 merge diagnostic
+
+on:
+  push:
+    branches: [sync-v3-diagnostic]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Diagnose merge conflicts
+        id: merge
+        shell: bash
+        run: |
+          git remote add upstream https://github.com/Mangi-11/Eta.git
+          git fetch --no-tags upstream v3.0.0
+          set +e
+          git merge --no-commit --no-ff FETCH_HEAD
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -eq 0 ]; then
+            printf 'clean\n' > merge-status.txt
+            git merge --abort
+            exit 0
+          fi
+          printf 'conflicted\n' > merge-status.txt
+          git diff --name-only --diff-filter=U > conflict-files.txt
+          git diff --cc > merge-conflicts.diff
+          exit "$merge_status"
+      - name: Upload diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-v3-merge-diagnostic
+          path: |
+            merge-status.txt
+            conflict-files.txt
+            merge-conflicts.diff
+          if-no-files-found: warn
