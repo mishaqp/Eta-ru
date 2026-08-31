@@ -35,7 +35,6 @@ class EntrySurfaceGuardTest {
     }
 
     @Test
-    @Test
     fun etaVoiceGuardExcludesEtaUntilTheVoiceWindowIsDismissed() {
         val dismissCalls = AtomicInteger()
         val guard = EntrySurfaceGuard.from(
