@@ -26,15 +26,6 @@ internal data class AlpineEnvironmentStatus(
     val version: String? = null,
 )
 
-internal data class AlpineEnvironmentHealth(
-    val healthy: Boolean,
-    val availableTools: List<String>,
-    val missingTools: List<String>,
-    val workspaceReady: Boolean,
-    val sharedStorageReady: Boolean,
-    val availableBytes: Long,
-)
-
 internal enum class AlpineInstallStage {
     CHECKING,
     DOWNLOADING,
@@ -51,7 +42,9 @@ internal data class AlpineInstallProgress(
 
 internal sealed interface AlpineInstallResult {
     data object AlreadyReady : AlpineInstallResult
-    data class Installed(val version: String) : AlpineInstallResult
+    data class BaseInstalled(val version: String) : AlpineInstallResult
+    data class ToolsInstalled(val version: String) : AlpineInstallResult
+    data object BaseNotInstalled : AlpineInstallResult
     data class UnsupportedAbi(val abi: String) : AlpineInstallResult
     data object RootUnavailable : AlpineInstallResult
     data object BusyBoxUnavailable : AlpineInstallResult
@@ -60,7 +53,7 @@ internal sealed interface AlpineInstallResult {
 }
 
 /**
- * 下载官方 Alpine minirootfs，并在 Root 授权边界内完成原子解压与常用工具安装。
+ * 下载官方 Alpine minirootfs，并在 Root 授权边界内完成原子解压。
  * 下载内容先校验固定 SHA-256；安装过程不会扩大到 App 私有环境目录之外。
  */
 internal class AlpineEnvironmentInstaller(
@@ -79,65 +72,33 @@ internal class AlpineEnvironmentInstaller(
         return AlpineEnvironmentStatus(state = state, version = version)
     }
 
-    suspend fun install(
-        forceToolInstall: Boolean = false,
+    suspend fun installBase(
         onProgress: suspend (AlpineInstallProgress) -> Unit = {},
     ): AlpineInstallResult {
         installMutex.lock()
         return try {
-            installLocked(forceToolInstall, onProgress)
+            installBaseLocked(onProgress)
         } finally {
             installMutex.unlock()
         }
     }
 
-    suspend fun inspectHealth(): AlpineEnvironmentHealth = withContext(Dispatchers.IO) {
-        val rootfs = AlpineEnvironmentPaths.rootfsDir(context)
-        val availableBytes = rootfs.parentFile?.usableSpace ?: context.filesDir.usableSpace
-        if (!AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath)) {
-            return@withContext AlpineEnvironmentHealth(
-                healthy = false,
-                availableTools = emptyList(),
-                missingTools = HEALTH_CHECK_COMMANDS,
-                workspaceReady = false,
-                sharedStorageReady = false,
-                availableBytes = availableBytes,
-            )
+    suspend fun installTools(
+        onProgress: suspend (AlpineInstallProgress) -> Unit = {},
+    ): AlpineInstallResult {
+        installMutex.lock()
+        return try {
+            installToolsLocked(onProgress)
+        } finally {
+            installMutex.unlock()
         }
-        val command = buildString {
-            append("for eta_tool in ")
-            append(HEALTH_CHECK_COMMANDS.joinToString(" "))
-            append("; do command -v \"${'$'}eta_tool\" >/dev/null 2>&1 && printf 'tool:%s\\n' \"${'$'}eta_tool\"; done\n")
-            append("mountpoint -q /workspace && printf 'mount:workspace\\n'\n")
-            append("mountpoint -q /storage/emulated/0 && printf 'mount:sdcard\\n'\n")
-            append("true")
-        }
-        val result = InstallerShellRunner.run(
-            command = command,
-            timeoutSeconds = 30,
-            environment = TerminalEnvironment.LINUX,
-            linuxRootfsPath = rootfs.absolutePath,
-        )
-        val facts = result.output.lineSequence().map(String::trim).filter(String::isNotEmpty).toSet()
-        val availableTools = HEALTH_CHECK_COMMANDS.filter { tool -> "tool:$tool" in facts }
-        val missingTools = HEALTH_CHECK_COMMANDS - availableTools.toSet()
-        val workspaceReady = "mount:workspace" in facts
-        val sharedStorageReady = "mount:sdcard" in facts
-        AlpineEnvironmentHealth(
-            healthy = result.exitCode == 0 && missingTools.isEmpty() && workspaceReady,
-            availableTools = availableTools,
-            missingTools = missingTools,
-            workspaceReady = workspaceReady,
-            sharedStorageReady = sharedStorageReady,
-            availableBytes = availableBytes,
-        )
     }
 
-    private suspend fun installLocked(
-        forceToolInstall: Boolean,
+    private suspend fun installBaseLocked(
         onProgress: suspend (AlpineInstallProgress) -> Unit,
     ): AlpineInstallResult = withContext(Dispatchers.IO) {
-        if (!forceToolInstall && status().state == AlpineEnvironmentState.READY) {
+        val rootfs = AlpineEnvironmentPaths.rootfsDir(context)
+        if (AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath)) {
             return@withContext AlpineInstallResult.AlreadyReady
         }
         val artifact = artifactForAbis(Build.SUPPORTED_ABIS.toList())
@@ -146,51 +107,61 @@ internal class AlpineEnvironmentInstaller(
             )
 
         onProgress(AlpineInstallProgress(AlpineInstallStage.CHECKING))
-        when (runPreflight().exitCode) {
-            0 -> Unit
-            PREFLIGHT_ROOT_UNAVAILABLE -> return@withContext AlpineInstallResult.RootUnavailable
-            PREFLIGHT_BUSYBOX_UNAVAILABLE, PREFLIGHT_BUSYBOX_INCOMPLETE ->
-                return@withContext AlpineInstallResult.BusyBoxUnavailable
-            PREFLIGHT_ENVIRONMENT_UNAVAILABLE ->
-                return@withContext AlpineInstallResult.EnvironmentUnavailable
-            else -> return@withContext AlpineInstallResult.Failed(AlpineInstallStage.CHECKING)
+        preflightFailure()?.let { return@withContext it }
+
+        val archive = File(context.cacheDir, artifact.fileName + ".download")
+        try {
+            onProgress(AlpineInstallProgress(AlpineInstallStage.DOWNLOADING))
+            val downloaded = artifactDownloader.download(artifact, archive) { downloadedBytes, totalBytes ->
+                onProgress(
+                    AlpineInstallProgress(
+                        stage = AlpineInstallStage.DOWNLOADING,
+                        downloadedBytes = downloadedBytes,
+                        totalBytes = totalBytes,
+                    ),
+                )
+            }
+            if (!downloaded) return@withContext AlpineInstallResult.Failed(AlpineInstallStage.DOWNLOADING)
+            coroutineContext.ensureActive()
+            onProgress(AlpineInstallProgress(AlpineInstallStage.EXTRACTING))
+            if (!installRootfs(artifact, archive, rootfs)) {
+                return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING)
+            }
+        } finally {
+            archive.delete()
         }
 
+        onProgress(AlpineInstallProgress(AlpineInstallStage.COMPLETE))
+        AlpineInstallResult.BaseInstalled(artifact.version)
+    }
+
+    private suspend fun installToolsLocked(
+        onProgress: suspend (AlpineInstallProgress) -> Unit,
+    ): AlpineInstallResult = withContext(Dispatchers.IO) {
         val rootfs = AlpineEnvironmentPaths.rootfsDir(context)
         if (!AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath)) {
-            val archive = File(context.cacheDir, artifact.fileName + ".download")
-            try {
-                onProgress(AlpineInstallProgress(AlpineInstallStage.DOWNLOADING))
-                val downloaded = artifactDownloader.download(artifact, archive) { downloadedBytes, totalBytes ->
-                    onProgress(
-                        AlpineInstallProgress(
-                            stage = AlpineInstallStage.DOWNLOADING,
-                            downloadedBytes = downloadedBytes,
-                            totalBytes = totalBytes,
-                        ),
-                    )
-                }
-                if (!downloaded) {
-                    return@withContext AlpineInstallResult.Failed(AlpineInstallStage.DOWNLOADING)
-                }
-                coroutineContext.ensureActive()
-                onProgress(AlpineInstallProgress(AlpineInstallStage.EXTRACTING))
-                val extracted = installRootfs(artifact, archive, rootfs)
-                if (!extracted) {
-                    return@withContext AlpineInstallResult.Failed(AlpineInstallStage.EXTRACTING)
-                }
-            } finally {
-                archive.delete()
-            }
+            return@withContext AlpineInstallResult.BaseNotInstalled
         }
-
-        coroutineContext.ensureActive()
+        if (AlpineEnvironmentPaths.commonToolsReady(rootfs.absolutePath)) {
+            return@withContext AlpineInstallResult.AlreadyReady
+        }
+        onProgress(AlpineInstallProgress(AlpineInstallStage.CHECKING))
+        preflightFailure()?.let { return@withContext it }
         onProgress(AlpineInstallProgress(AlpineInstallStage.INSTALLING_TOOLS))
         if (!installCommonTools(rootfs)) {
             return@withContext AlpineInstallResult.Failed(AlpineInstallStage.INSTALLING_TOOLS)
         }
         onProgress(AlpineInstallProgress(AlpineInstallStage.COMPLETE))
-        AlpineInstallResult.Installed(artifact.version)
+        AlpineInstallResult.ToolsInstalled(readInstalledVersion(rootfs) ?: ALPINE_VERSION)
+    }
+
+    private suspend fun preflightFailure(): AlpineInstallResult? = when (runPreflight().exitCode) {
+        0 -> null
+        PREFLIGHT_ROOT_UNAVAILABLE -> AlpineInstallResult.RootUnavailable
+        PREFLIGHT_BUSYBOX_UNAVAILABLE, PREFLIGHT_BUSYBOX_INCOMPLETE ->
+            AlpineInstallResult.BusyBoxUnavailable
+        PREFLIGHT_ENVIRONMENT_UNAVAILABLE -> AlpineInstallResult.EnvironmentUnavailable
+        else -> AlpineInstallResult.Failed(AlpineInstallStage.CHECKING)
     }
 
     private suspend fun runPreflight(): InstallerCommandResult {
@@ -241,7 +212,6 @@ internal class AlpineEnvironmentInstaller(
             "${'$'}eta_busybox" rm -rf "${'$'}eta_temporary"
             "${'$'}eta_busybox" mkdir -p "${'$'}eta_temporary" || exit 66
             "${'$'}eta_busybox" tar -xzf "${'$'}eta_archive" -C "${'$'}eta_temporary" || exit 67
-            [ -x "${'$'}eta_temporary/bin/busybox" ] || exit 68
             "${'$'}eta_busybox" mkdir -p \
               "${'$'}eta_temporary/proc" \
               "${'$'}eta_temporary/sys" \
@@ -254,13 +224,17 @@ internal class AlpineEnvironmentInstaller(
             "${'$'}eta_busybox" rm -f "${'$'}eta_temporary/sdcard"
             "${'$'}eta_busybox" ln -s /storage/emulated/0 "${'$'}eta_temporary/sdcard"
             cat > "${'$'}eta_temporary/etc/resolv.conf" <<'ETA_RESOLV_EOF'
+            nameserver 223.5.5.5
+            nameserver 119.29.29.29
             nameserver 1.1.1.1
-            nameserver 8.8.8.8
             ETA_RESOLV_EOF
-            cat > "${'$'}eta_temporary/etc/apk/repositories" <<'ETA_REPOSITORIES_EOF'
-            https://dl-cdn.alpinelinux.org/alpine/v3.24/main
-            https://dl-cdn.alpinelinux.org/alpine/v3.24/community
-            ETA_REPOSITORIES_EOF
+            printf '%s\n' \
+              ${shellQuote("${APK_MIRROR_BASE_URLS.first()}/v3.24/main")} \
+              ${shellQuote("${APK_MIRROR_BASE_URLS.first()}/v3.24/community")} > "${'$'}eta_temporary/etc/apk/repositories"
+            "${'$'}eta_busybox" mkdir -p "${'$'}eta_temporary/usr/local/bin"
+            printf '%s\n' '#!/bin/sh' > "${'$'}eta_temporary/usr/local/bin/eta-apk"
+            printf %s ${shellQuote(apkMirrorScriptBody())} >> "${'$'}eta_temporary/usr/local/bin/eta-apk"
+            "${'$'}eta_busybox" chmod 0755 "${'$'}eta_temporary/usr/local/bin/eta-apk"
             printf ${shellQuote(markerBody)} > "${'$'}eta_temporary/${AlpineEnvironmentPaths.READY_MARKER}"
             "${'$'}eta_busybox" chmod 0644 "${'$'}eta_temporary/${AlpineEnvironmentPaths.READY_MARKER}"
             "${'$'}eta_busybox" rm -rf "${'$'}eta_rootfs"
@@ -275,14 +249,17 @@ internal class AlpineEnvironmentInstaller(
             "Alpine environment action=extract outcome=${if (result.exitCode == 0) "succeeded" else "failed"} " +
                 "exitCode=${result.exitCode} outputChars=${result.output.length}",
         )
-        return result.exitCode == 0 && AlpineEnvironmentPaths.rootfsReady(rootfs.absolutePath)
+        return result.exitCode == 0
     }
 
     private suspend fun installCommonTools(rootfs: File): Boolean {
         val packages = AGENT_PACKAGES.joinToString(" ")
         val command = """
-            apk update
-            apk add --no-cache $packages
+            mkdir -p /usr/local/bin
+            printf '%s\n' '#!/bin/sh' > /usr/local/bin/eta-apk
+            printf %s ${shellQuote(apkMirrorScriptBody())} >> /usr/local/bin/eta-apk
+            chmod 0755 /usr/local/bin/eta-apk
+            /usr/local/bin/eta-apk install $packages || exit 70
             cat > /${AlpineEnvironmentPaths.COMMON_TOOLS_MARKER} <<'ETA_TOOLSET_EOF'
             alpine=$ALPINE_VERSION
             toolset=${AlpineEnvironmentPaths.TOOLSET_REVISION}
@@ -293,7 +270,7 @@ internal class AlpineEnvironmentInstaller(
         val result = InstallerShellRunner.run(
             command = command,
             timeoutSeconds = COMMON_TOOLS_TIMEOUT_SECONDS,
-            environment = TerminalEnvironment.LINUX,
+            environment = TerminalEnvironment.ALPINE,
             linuxRootfsPath = rootfs.absolutePath,
         )
         AndroidAgentLogger.info(
@@ -301,7 +278,7 @@ internal class AlpineEnvironmentInstaller(
                 "outcome=${if (result.exitCode == 0) "succeeded" else "failed"} " +
                 "exitCode=${result.exitCode} outputChars=${result.output.length}",
         )
-        return result.exitCode == 0 && AlpineEnvironmentPaths.commonToolsReady(rootfs.absolutePath)
+        return result.exitCode == 0
     }
 
     private fun readInstalledVersion(rootfs: File): String? =
@@ -356,19 +333,28 @@ internal class AlpineEnvironmentInstaller(
             "zstd",
         )
 
-        private val HEALTH_CHECK_COMMANDS = listOf(
-            "bash",
-            "curl",
-            "diff",
-            "fd",
-            "git",
-            "jq",
-            "patch",
-            "rg",
-            "rsync",
-            "sqlite3",
-            "ssh",
+        /** 真机链路只保留一个国内镜像，避免可访问但过慢的源阻塞后续尝试。 */
+        internal val APK_MIRROR_BASE_URLS = listOf(
+            "https://mirrors.aliyun.com/alpine",
+            "https://dl-cdn.alpinelinux.org/alpine",
         )
+
+        /** 逐个尝试镜像并把成功者写回 repositories，后续 profile 安装会复用它。 */
+        internal fun apkMirrorScript(): String = "#!/bin/sh\n${apkMirrorScriptBody()}"
+
+        private fun apkMirrorScriptBody(): String = buildString {
+            append("set -u; ")
+            append("case \"${'$'}{1:-}\" in ")
+            append("install) shift; [ \"${'$'}#\" -gt 0 ] || exit 64; ")
+            append("for eta_apk_mirror in ${APK_MIRROR_BASE_URLS.joinToString(" ")}; do ")
+            append("printf '%s\\n' \"${'$'}eta_apk_mirror/v3.24/main\" \"${'$'}eta_apk_mirror/v3.24/community\" > /etc/apk/repositories || exit 65; ")
+            append("if apk update && apk add --no-cache \"${'$'}@\"; then exit 0; fi; ")
+            append("done; exit 1;; ")
+            append("update) for eta_apk_mirror in ${APK_MIRROR_BASE_URLS.joinToString(" ")}; do ")
+            append("printf '%s\\n' \"${'$'}eta_apk_mirror/v3.24/main\" \"${'$'}eta_apk_mirror/v3.24/community\" > /etc/apk/repositories || exit 65; ")
+            append("apk update && exit 0; done; exit 1;; ")
+            append("*) echo \"usage: eta-apk install PACKAGE... | update\" >&2; exit 64;; esac")
+        }
 
         internal fun artifactForAbis(abis: List<String>): VerifiedArtifact? =
             abis.firstNotNullOfOrNull { abi ->
@@ -381,6 +367,10 @@ internal class AlpineEnvironmentInstaller(
                             "alpine-minirootfs-$ALPINE_VERSION-aarch64.tar.gz",
                         sha256 = "f55a90f69052c5bd6f92cb09a8f47065970830b194c917a006fb94028e721259",
                         sizeBytes = 4_023_732L,
+                        preferredUrls = listOf(
+                            "https://mirrors.aliyun.com/alpine/v3.24/releases/aarch64/" +
+                                "alpine-minirootfs-$ALPINE_VERSION-aarch64.tar.gz",
+                        ),
                     )
                     "x86_64" -> VerifiedArtifact(
                         id = "alpine-minirootfs-x86_64",
@@ -390,6 +380,10 @@ internal class AlpineEnvironmentInstaller(
                             "alpine-minirootfs-$ALPINE_VERSION-x86_64.tar.gz",
                         sha256 = "41f73e3cf5fa919b8aa5ca6b30dc48f0da2720776d7423e2a7748211456fe081",
                         sizeBytes = 3_698_422L,
+                        preferredUrls = listOf(
+                            "https://mirrors.aliyun.com/alpine/v3.24/releases/x86_64/" +
+                                "alpine-minirootfs-$ALPINE_VERSION-x86_64.tar.gz",
+                        ),
                     )
                     else -> null
                 }

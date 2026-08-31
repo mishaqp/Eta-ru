@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.launch
@@ -72,7 +73,9 @@ import io.github.mangi.eta.ui.screens.mcp.McpServersScreen
 import io.github.mangi.eta.ui.screens.permissions.PermissionHealthScreen
 import io.github.mangi.eta.ui.screens.skills.AgentSkillsScreen
 import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen
-import io.github.mangi.eta.ui.screens.terminal.TerminalScreen
+import io.github.mangi.eta.ui.screens.terminal.LinuxFilesScreen
+import io.github.mangi.eta.ui.screens.terminal.SharedFoldersScreen
+import io.github.mangi.eta.ui.screens.terminal.TerminalEntryScreen
 import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
 
 /**
@@ -87,7 +90,8 @@ fun AgentAppRoot(
     val uiScope = rememberCoroutineScope()
     val backStack = rememberNavBackStack<AppRoute>(AppRoute.Home)
     val navigator = remember(backStack) { AgentNavigator(backStack) }
-    val agentState = viewModel<AgentAppViewModel>().state
+    val appViewModel = viewModel<AgentAppViewModel>()
+    val agentState = appViewModel.state
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -169,6 +173,27 @@ fun AgentAppRoot(
             onAssistantSelected = { assistantId -> agentState.selectAssistant(assistantId) },
             onSearchConversations = { query -> agentState.updateSearchQuery(query) },
             onNewConversation = { createConversation() },
+            onOpenTerminal = { pushRoute(AppRoute.Terminal) },
+            onLaunchKimiWeb = {
+                if (appViewModel.kimiWebReady()) {
+                    appViewModel.launchKimiWeb { result ->
+                        if (result is KimiWebLaunchResult.Failed) {
+                            Toast.makeText(
+                                context,
+                                when (result.code) {
+                                    "START_FAILED" -> R.string.linux_kimi_web_failed_start
+                                    "URL_TIMEOUT" -> R.string.linux_kimi_web_failed_url
+                                    else -> R.string.linux_kimi_web_failed_browser
+                                },
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }
+                } else {
+                    pushRoute(AppRoute.LinuxEnvironment)
+                }
+            },
+            onOpenBrowser = { pushRoute(AppRoute.Browser) },
             onSelectConversation = { conversationId -> selectConversation(conversationId) },
             onConversationRename = { conversation ->
                 conversationRenameTarget = conversation
@@ -308,6 +333,15 @@ fun AgentAppRoot(
             entry<AppRoute.Browser>(swipeDismiss = swipeDismiss) {
                 RoutedShell(route = AppRoute.Browser) {
                     AgentBrowserScreen()
+                }
+            }
+            entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {
+                RoutedShell(route = AppRoute.Terminal) {
+                    TerminalEntryScreen(
+                        terminalStore = appViewModel.terminalStore,
+                        consoleStore = appViewModel.consoleStore,
+                        onOpenEnvironment = { pushRoute(AppRoute.LinuxEnvironment) },
+                    )
                 }
             }
             entry<AppRoute.Tools>(swipeDismiss = swipeDismiss) {
@@ -494,12 +528,23 @@ fun AgentAppRoot(
             entry<AppRoute.LinuxEnvironment>(swipeDismiss = swipeDismiss) {
                 LinuxEnvironmentScreen(
                     context = context,
+                    onNavigate = { route -> pushRoute(route) },
+                    onBack = ::popRoute,
+                )
+            }
+            entry<AppRoute.SharedFolders>(swipeDismiss = swipeDismiss) {
+                SharedFoldersScreen(
+                    context = context,
+                    onBack = ::popRoute,
+                )
+            }
+            entry<AppRoute.LinuxFiles>(swipeDismiss = swipeDismiss) { route ->
+                LinuxFilesScreen(
+                    context = context,
+                    distribution = route.distribution,
                     onBack = ::popRoute,
                     onOpenTerminal = { pushRoute(AppRoute.Terminal) },
                 )
-            }
-            entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {
-                TerminalScreen(context = context, onBack = ::popRoute)
             }
             entry<AppRoute.ModelProviders>(swipeDismiss = swipeDismiss) {
                 ModelProviderListScreen(

@@ -491,11 +491,16 @@ internal class AgentTraceFormatter {
         "open_and_exec" -> "单次执行"
         "read_async_result" -> "读取后台输出"
         "close" -> "关闭终端"
+        "daemon_start" -> "启动守护任务"
+        "daemon_list" -> "守护任务列表"
+        "daemon_logs" -> "查看守护日志"
+        "daemon_stop" -> "停止守护任务"
         else -> "终端操作"
     }
 
     private fun String.terminalEnvironmentLabel(): String = when (this) {
-        "linux" -> "Linux"
+        "linux", "alpine" -> "Alpine"
+        "debian" -> "Debian"
         else -> "Android"
     }
 

@@ -14,6 +14,7 @@ import io.github.mangi.eta.data.repository.AgentMemoryRepository
 import io.github.mangi.eta.data.repository.AssistantProfileRepository
 import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
 import io.github.mangi.eta.data.repository.McpServerRepository
+import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.ui.app.PredictiveBackController
 import io.github.libxposed.service.XposedService
@@ -59,6 +60,7 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
         applicationScope.launch {
+            LinuxEnvironmentSettingsRepository.initialize(this@EtaApp)
             runCatching {
                 AssistantProfileRepository.ensureDefault()
             }.onFailure { throwable ->

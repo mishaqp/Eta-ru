@@ -15,6 +15,9 @@ sealed interface AppRoute : NavKey {
     data object Browser : AppRoute
 
     @Serializable
+    data object Terminal : AppRoute
+
+    @Serializable
     data object Tools : AppRoute
 
     @Serializable
@@ -45,7 +48,10 @@ sealed interface AppRoute : NavKey {
     data object LinuxEnvironment : AppRoute
 
     @Serializable
-    data object Terminal : AppRoute
+    data object SharedFolders : AppRoute
+
+    @Serializable
+    data class LinuxFiles(val distribution: String) : AppRoute
 
     @Serializable
     data object ModelProviders : AppRoute

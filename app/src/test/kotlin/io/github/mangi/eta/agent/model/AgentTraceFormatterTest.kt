@@ -105,7 +105,7 @@ class AgentTraceFormatterTest {
 
         assertEquals("git status --short", formatter.displayCommand(terminal))
         assertEquals("pm list packages | head", formatter.displayCommand(runCommand))
-        assertTrue(formatter.summarizeArguments(terminal).contains("Linux"))
+        assertTrue(formatter.summarizeArguments(terminal).contains("Alpine"))
         assertFalse(formatter.summarizeArguments(terminal).contains("git status"))
         assertNull(
             formatter.displayCommand(

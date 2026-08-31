@@ -15,26 +15,31 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-class AlpineApkAnalysisInstallerTest {
+class LinuxApkAnalysisInstallerTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
     @Test
     fun artifactManifestPinsOfficialHttpsDownloadsAndIntegrityMetadata() {
-        val artifacts = AlpineApkAnalysisInstaller.ARTIFACTS
+        val artifacts = LinuxApkAnalysisInstaller.ARTIFACTS
 
         assertEquals(listOf("jadx", "apktool", "smali", "baksmali"), artifacts.map { it.id })
         assertTrue(artifacts.all { artifact -> artifact.url.startsWith("https://github.com/") })
-        assertTrue(artifacts.all { artifact -> artifact.fallbackUrls.size == 2 })
+        assertTrue(artifacts.all { artifact -> artifact.preferredUrls.size == 1 })
         assertTrue(
             artifacts.all { artifact ->
-                artifact.fallbackUrls.all { fallback -> fallback.endsWith(artifact.url) }
+                artifact.preferredUrls.single().startsWith("https://gh-proxy.com/")
+            },
+        )
+        assertTrue(
+            artifacts.all { artifact ->
+                artifact.preferredUrls.all { preferred -> preferred.endsWith(artifact.url) }
             },
         )
         assertTrue(artifacts.all { artifact -> artifact.sha256.matches(Regex("[0-9a-f]{64}")) })
         assertTrue(artifacts.all { artifact -> artifact.sizeBytes > 1_000_000L })
-        assertEquals(83_881_596L, artifacts.sumOf { artifact -> artifact.sizeBytes })
-        assertTrue(AlpineApkAnalysisInstaller.MIN_AVAILABLE_BYTES > artifacts.sumOf { it.sizeBytes } * 2)
+        assertEquals(97_957_320L, artifacts.sumOf { artifact -> artifact.sizeBytes })
+        assertTrue(LinuxApkAnalysisInstaller.MIN_AVAILABLE_BYTES > artifacts.sumOf { it.sizeBytes } * 2)
     }
 
     @Test
@@ -60,7 +65,7 @@ class AlpineApkAnalysisInstallerTest {
 
     @Test
     fun apktoolWrapperRejectsBuildWithoutArm64Aapt2() {
-        val wrapper = AlpineApkAnalysisInstaller.APKTOOL_WRAPPER
+        val wrapper = LinuxApkAnalysisInstaller.APKTOOL_WRAPPER
 
         assertTrue(wrapper.contains("b|build"))
         assertTrue(wrapper.contains("APKTOOL_BUILD_UNAVAILABLE"))
@@ -69,12 +74,22 @@ class AlpineApkAnalysisInstallerTest {
     }
 
     @Test
-    fun javaWrapperUsesRealLauncherAndSuppliesJdkLibraries() {
-        val wrapper = AlpineApkAnalysisInstaller.JAVA_WRAPPER
+    fun javaWrapperUsesDistributionJavaAlternative() {
+        val wrapper = LinuxApkAnalysisInstaller.JAVA_WRAPPER
 
-        assertTrue(wrapper.contains("JAVA_HOME=/usr/lib/jvm/default-jvm"))
-        assertTrue(wrapper.contains("LD_LIBRARY_PATH=/usr/lib/jvm/default-jvm/lib"))
-        assertTrue(wrapper.contains("exec /usr/lib/jvm/default-jvm/bin/java"))
+        assertTrue(wrapper.contains("exec /usr/bin/java"))
+    }
+
+    @Test
+    fun javaRuntimeUsesSelectedDistributionStablePackage() {
+        assertEquals(
+            "/usr/local/bin/eta-apk install openjdk25-jdk",
+            linuxApkJavaInstallCommand(LinuxDistribution.ALPINE),
+        )
+        assertEquals(
+            "/usr/local/bin/eta-apt install openjdk-25-jdk-headless",
+            linuxApkJavaInstallCommand(LinuxDistribution.DEBIAN),
+        )
     }
 
     @Test
@@ -105,6 +120,31 @@ class AlpineApkAnalysisInstallerTest {
         assertTrue(VerifiedArtifactDownloader(client, NoopLogger).download(artifact, target))
         assertEquals(listOf("official.invalid", "fallback.invalid"), requestedHosts)
         assertEquals("abc", target.readText())
+    }
+
+    @Test
+    fun downloaderUsesPreferredMirrorBeforeOfficialEndpoint() = runBlocking {
+        val requestedHosts = mutableListOf<String>()
+        val client = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request()
+                requestedHosts += request.url.host
+                response(request, 200, "abc".encodeToByteArray())
+            }
+            .build()
+        val artifact = VerifiedArtifact(
+            id = "fixture",
+            version = "1",
+            fileName = "preferred-fixture.bin",
+            url = "https://official.invalid/fixture.bin",
+            sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            sizeBytes = 3,
+            preferredUrls = listOf("https://mirror.invalid/fixture.bin"),
+        )
+        val target = File(temporaryFolder.root, artifact.fileName)
+
+        assertTrue(VerifiedArtifactDownloader(client, NoopLogger).download(artifact, target))
+        assertEquals(listOf("mirror.invalid"), requestedHosts)
     }
 
     private fun response(request: Request, code: Int, body: ByteArray): Response =
