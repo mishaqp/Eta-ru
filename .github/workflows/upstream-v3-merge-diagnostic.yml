@@ -1,56 +1,38 @@
-name: Upstream v3 merge diagnostic
+name: Create upstream v3 merge branch
 
 on:
   push:
     branches: [sync-v3-diagnostic]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  merge:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Produce merge worktree
+      - name: Merge upstream v3.0.0
         shell: bash
         run: |
+          cp .github/upstream-v3-resolution.patch "$RUNNER_TEMP/upstream-v3-resolution.patch"
           git config user.name 'Eta upstream sync'
           git config user.email 'eta-sync@users.noreply.github.com'
+          git fetch origin eta-build
+          git checkout -B merge-upstream-v3 origin/eta-build
           git remote add upstream https://github.com/Mangi-11/Eta.git
           git fetch --no-tags upstream v3.0.0
-          set +e
-          git merge --no-commit --no-ff FETCH_HEAD
-          merge_status=$?
-          set -e
-          if [ "$merge_status" -eq 0 ]; then
-            printf 'clean\n' > merge-status.txt
-          else
-            printf 'conflicted\n' > merge-status.txt
-          fi
-          git diff --name-only HEAD | sort -u > merge-changed-files.txt
-          git diff --name-only --diff-filter=U > conflict-files.txt
-          git diff --name-only --diff-filter=D HEAD > merge-deleted-files.txt
-          git diff --cc > merge-conflicts.diff
-          while IFS= read -r path; do
-            if [ -f "$path" ]; then
-              mkdir -p "merge-result/$(dirname "$path")"
-              cp "$path" "merge-result/$path"
-            fi
-          done < merge-changed-files.txt
-          exit "$merge_status"
-      - name: Upload merge worktree
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: upstream-v3-merge-diagnostic
-          path: |
-            merge-status.txt
-            merge-changed-files.txt
-            merge-deleted-files.txt
-            conflict-files.txt
-            merge-conflicts.diff
-            merge-result
-          if-no-files-found: warn
+          git merge --no-commit --no-ff FETCH_HEAD || true
+          git checkout --ours README.md README_EN.md docs/TECHNICAL.md
+          git checkout --theirs app/src/main/kotlin/io/github/mangi/eta/agent/terminal/AlpineEnvironmentPaths.kt
+          git checkout --theirs app/src/main/kotlin/io/github/mangi/eta/ui/screens/terminal/LinuxEnvironmentScreen.kt
+          git rm --force app/src/main/kotlin/io/github/mangi/eta/agent/terminal/AlpinePackageProfiles.kt
+          git apply "$RUNNER_TEMP/upstream-v3-resolution.patch"
+          git add -A
+          git diff --cached --check
+          git diff --cached --name-only --diff-filter=U | tee "$RUNNER_TEMP/unresolved.txt"
+          test ! -s "$RUNNER_TEMP/unresolved.txt"
+          git commit -m 'sync: merge upstream Eta v3.0.0'
+          git push origin HEAD:sync-v3-merged
