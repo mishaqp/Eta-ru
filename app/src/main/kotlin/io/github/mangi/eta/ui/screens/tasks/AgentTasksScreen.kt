@@ -1,5 +1,10 @@
 package io.github.mangi.eta.ui.screens.tasks
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,14 +33,11 @@ import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
@@ -45,6 +48,16 @@ internal fun AgentTasksScreen(onBack: () -> Unit) {
     val scheduler = remember(context) { AgentTaskScheduler(context) }
     val tasks by repository.observeAll().collectAsState(initial = emptyList())
     var taskToDelete by remember { mutableStateOf<AgentTaskEntity?>(null) }
+    var notificationsEnabled by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> notificationsEnabled = granted }
 
     MiuixScaffoldPage(
         title = stringResource(R.string.route_tasks),
@@ -56,6 +69,17 @@ internal fun AgentTasksScreen(onBack: () -> Unit) {
                 summary = stringResource(R.string.tasks_description),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             )
+            if (!notificationsEnabled) {
+                TextButton(
+                    text = stringResource(R.string.tasks_enable_notifications),
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                )
+            }
         }
         if (tasks.isEmpty()) {
             item(key = "empty") {

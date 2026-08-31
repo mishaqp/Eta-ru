@@ -68,6 +68,11 @@ internal class AgentTaskScheduler(context: Context) {
                     .putBoolean(AgentTaskWorker.KEY_MANUAL, true)
                     .build()
             )
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                30L,
+                TimeUnit.SECONDS,
+            )
             .build()
         workManager.enqueueUniqueWork(
             manualWorkName(taskId),

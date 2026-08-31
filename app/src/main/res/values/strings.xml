@@ -1075,6 +1075,7 @@
   <string name="tasks_empty_summary">Say “remind me” or ask Eta to run an action later.</string>
   <string name="tasks_configured">Configured tasks: %d</string>
   <string name="tasks_settings_summary">Persistent schedules and execution history</string>
+  <string name="tasks_enable_notifications">Enable task notifications</string>
   <string name="tasks_run_now">Run now</string>
   <string name="tasks_delete_title">Delete task?</string>
   <string name="tasks_delete_summary">“%1$s” and its execution history will be deleted.</string>
