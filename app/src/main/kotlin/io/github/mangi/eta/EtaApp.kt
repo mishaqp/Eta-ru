@@ -11,6 +11,7 @@ import io.github.mangi.eta.core.safeLogType
 import io.github.mangi.eta.data.codex.CodexAccountRepository
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
+import io.github.mangi.eta.data.repository.AssistantProfileRepository
 import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
 import io.github.mangi.eta.data.repository.McpServerRepository
 import io.github.mangi.eta.data.repository.ProviderRepository
@@ -53,9 +54,19 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         PredictiveBackController.apply(applicationInfo, predictiveBackEnabled)
         AgentMemoryRepository.init(this)
         ProviderRepository.init(this)
+        AssistantProfileRepository.init(this)
         CodexAccountRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
+        applicationScope.launch {
+            runCatching {
+                AssistantProfileRepository.ensureDefault()
+            }.onFailure { throwable ->
+                AndroidAgentLogger.warn(
+                    "Assistant profile initialization failed: type=${throwable.safeLogType()}"
+                )
+            }
+        }
         applicationScope.launch {
             runCatching {
                 AgentTaskBootReceiver.recover(this@EtaApp)

@@ -24,8 +24,9 @@ import androidx.room.migration.Migration
         McpServerEntity::class,
         AgentTaskEntity::class,
         AgentTaskRunEntity::class,
+        AssistantProfileEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = false,
 )
 internal abstract class EtaDatabase : RoomDatabase() {
@@ -36,6 +37,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
     abstract fun mcpServerDao(): McpServerDao
     abstract fun agentTaskDao(): AgentTaskDao
     abstract fun agentTaskRunDao(): AgentTaskRunDao
+    abstract fun assistantProfileDao(): AssistantProfileDao
 
     companion object {
         @Volatile
@@ -62,6 +64,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
                         MIGRATION_16_17,
                         MIGRATION_17_18,
                         MIGRATION_18_19,
+                        MIGRATION_19_20,
                     )
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
@@ -166,6 +169,44 @@ internal abstract class EtaDatabase : RoomDatabase() {
             database.execSQL(
                 "CREATE INDEX IF NOT EXISTS index_agent_task_runs_task_id_outcome " +
                     "ON agent_task_runs(task_id, outcome)"
+            )
+        }
+
+        internal val MIGRATION_19_20 = Migration(19, 20) { database ->
+            database.execSQL(
+                "CREATE TABLE IF NOT EXISTS assistant_profiles (" +
+                    "id TEXT NOT NULL, " +
+                    "name TEXT NOT NULL, " +
+                    "description TEXT NOT NULL, " +
+                    "provider_id TEXT, " +
+                    "model_id TEXT, " +
+                    "system_prompt TEXT NOT NULL, " +
+                    "enabled INTEGER NOT NULL, " +
+                    "sort_order INTEGER NOT NULL, " +
+                    "created_at INTEGER NOT NULL, " +
+                    "updated_at INTEGER NOT NULL, " +
+                    "PRIMARY KEY(id))"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_assistant_profiles_enabled " +
+                    "ON assistant_profiles(enabled)"
+            )
+            database.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_assistant_profiles_sort_order_created_at " +
+                    "ON assistant_profiles(sort_order, created_at)"
+            )
+            database.execSQL(
+                "INSERT OR IGNORE INTO assistant_profiles (" +
+                    "id, name, description, provider_id, model_id, system_prompt, " +
+                    "enabled, sort_order, created_at, updated_at" +
+                    ") VALUES (" +
+                    "'eta-default-assistant', " +
+                    "'Основной ассистент', " +
+                    "'Основной профиль Eta; использует текущую модель и настройки провайдера', " +
+                    "NULL, NULL, '', 1, 0, " +
+                    "CAST(strftime('%s','now') AS INTEGER) * 1000, " +
+                    "CAST(strftime('%s','now') AS INTEGER) * 1000" +
+                    ")"
             )
         }
 
