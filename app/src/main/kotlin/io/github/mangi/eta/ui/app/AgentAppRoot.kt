@@ -543,7 +543,6 @@ fun AgentAppRoot(
                     context = context,
                     distribution = route.distribution,
                     onBack = ::popRoute,
-                    onOpenTerminal = { pushRoute(AppRoute.Terminal) },
                 )
             }
             entry<AppRoute.ModelProviders>(swipeDismiss = swipeDismiss) {
