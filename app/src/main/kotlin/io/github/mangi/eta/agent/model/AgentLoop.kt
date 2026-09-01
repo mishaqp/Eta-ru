@@ -34,6 +34,12 @@ internal class AgentLoop(
     )
 
     private val toolCallValidator = AgentToolCallValidator(tools)
+    private val contextCompactor = AgentContextCompactor(
+        config = config,
+        tools = tools,
+        provider = provider,
+        runController = runController,
+    )
     private val accumulatedReasoning = StringBuilder()
     private val sensitiveToolCallIds = linkedSetOf<String>()
     private var pendingToolImageMessage: JSONObject? = null
@@ -52,22 +58,11 @@ internal class AgentLoop(
 
             val reasoningLengthBeforeRound = accumulatedReasoning.length
             val providerResponse = try {
-                provider.complete(
-                    request = ProviderRequest(
-                        config = config,
-                        messages = messages,
-                        tools = tools,
-                    ),
-                    runController = runController,
-                ) { providerEvent ->
-                    if (
-                        providerEvent is ProviderEvent.BlockDelta &&
-                        providerEvent.kind == AssistantBlockKind.THINKING
-                    ) {
-                        accumulatedReasoning.append(providerEvent.delta)
-                    }
-                    providerEvent.toAgentEvent(round)?.let(onEvent)
-                }
+                completeRound(round)
+            } catch (throwable: Throwable) {
+                runController.throwIfCancelled()
+                if (!contextCompactor.canRetryOverflow(throwable)) throw throwable
+                completeRound(round, forceCompaction = true)
             } finally {
                 // 截图只供紧接着的一次推理消费；成功、失败或取消后都不进入后续上下文与归档。
                 discardPendingToolImageMessage()
@@ -146,6 +141,26 @@ internal class AgentLoop(
                 reasoningContent = reasoningSnapshot(),
                 sensitiveToolCallIds = sensitiveToolCallIds.toSet(),
             )
+        }
+    }
+
+    private fun completeRound(round: Int, forceCompaction: Boolean = false): ProviderResponse {
+        val requestMessages = contextCompactor.prepare(messages, force = forceCompaction)
+        return provider.complete(
+            request = ProviderRequest(
+                config = config,
+                messages = requestMessages,
+                tools = tools,
+            ),
+            runController = runController,
+        ) { providerEvent ->
+            if (
+                providerEvent is ProviderEvent.BlockDelta &&
+                providerEvent.kind == AssistantBlockKind.THINKING
+            ) {
+                accumulatedReasoning.append(providerEvent.delta)
+            }
+            providerEvent.toAgentEvent(round)?.let(onEvent)
         }
     }
 
