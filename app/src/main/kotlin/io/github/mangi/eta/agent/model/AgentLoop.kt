@@ -333,7 +333,14 @@ internal class AgentLoop(
             messages.put(AgentConversationCodec.toolResultMessage(outcome.call, outcome.result))
         }
 
-        val imageOutcomes = outcomes.filter { outcome -> outcome.result.images.isNotEmpty() }
+        // Once a gateway has rejected image input, keep the capability disabled for the rest
+        // of this run. A model may ask for another screenshot on the next turn; forwarding it
+        // again would recreate the same 404 and stop a long-running task.
+        val imageOutcomes = if (imageInputFallbackUsed) {
+            emptyList()
+        } else {
+            outcomes.filter { outcome -> outcome.result.images.isNotEmpty() }
+        }
         if (imageOutcomes.isEmpty()) return
 
         // 工具截图是瞬时观察，不是会话资产。下一次推理消费后立即删除。
