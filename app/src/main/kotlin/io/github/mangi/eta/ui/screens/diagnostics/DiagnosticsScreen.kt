@@ -44,9 +44,22 @@ internal fun DiagnosticsScreen(
 ) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
+    var collecting by remember { mutableStateOf(DiagnosticLogStore.isCollecting()) }
+
+    fun startCollection() {
+        DiagnosticLogStore.startCollection()
+        collecting = true
+        Toast.makeText(context, R.string.diagnostics_started, Toast.LENGTH_SHORT).show()
+    }
+
+    fun stopCollection() {
+        DiagnosticLogStore.stopCollection()
+        collecting = false
+        Toast.makeText(context, R.string.diagnostics_stopped, Toast.LENGTH_SHORT).show()
+    }
 
     fun shareReport() {
-        if (busy) return
+        if (busy || collecting) return
         busy = true
         scope.launch {
             try {
@@ -85,8 +98,16 @@ internal fun DiagnosticsScreen(
         item(key = "diagnostics-info") {
             Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                 BasicComponent(
-                    title = stringResource(R.string.diagnostics_info_title),
-                    summary = stringResource(R.string.diagnostics_info_summary),
+                    title = if (collecting) {
+                        stringResource(R.string.diagnostics_collecting_title)
+                    } else {
+                        stringResource(R.string.diagnostics_ready_title)
+                    },
+                    summary = if (collecting) {
+                        stringResource(R.string.diagnostics_collecting_summary)
+                    } else {
+                        stringResource(R.string.diagnostics_ready_summary)
+                    },
                 )
             }
         }
@@ -96,13 +117,34 @@ internal fun DiagnosticsScreen(
         item(key = "diagnostics-actions") {
             Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                 ArrowPreference(
-                    title = stringResource(R.string.diagnostics_share),
-                    summary = if (busy) {
-                        stringResource(R.string.diagnostics_working)
+                    title = if (collecting) {
+                        stringResource(R.string.diagnostics_stop)
                     } else {
-                        stringResource(R.string.diagnostics_share_summary)
+                        stringResource(R.string.diagnostics_start)
+                    },
+                    summary = if (collecting) {
+                        stringResource(R.string.diagnostics_stop_summary)
+                    } else {
+                        stringResource(R.string.diagnostics_start_summary)
                     },
                     enabled = !busy,
+                    startAction = {
+                        DiagnosticsIcon(
+                            icon = LucideR.drawable.lucide_ic_file_text,
+                            loading = false,
+                        )
+                    },
+                    onClick = if (collecting) ::stopCollection else ::startCollection,
+                )
+                top.yukonga.miuix.kmp.basic.HorizontalDivider()
+                ArrowPreference(
+                    title = stringResource(R.string.diagnostics_share),
+                    summary = when {
+                        collecting -> stringResource(R.string.diagnostics_stop_before_share)
+                        busy -> stringResource(R.string.diagnostics_working)
+                        else -> stringResource(R.string.diagnostics_share_summary)
+                    },
+                    enabled = !busy && !collecting,
                     startAction = {
                         DiagnosticsIcon(
                             icon = LucideR.drawable.lucide_ic_file_text,
@@ -124,8 +166,17 @@ internal fun DiagnosticsScreen(
                     },
                     onClick = {
                         DiagnosticLogStore.clear()
+                        collecting = false
                         Toast.makeText(context, R.string.diagnostics_cleared, Toast.LENGTH_SHORT).show()
                     },
+                )
+            }
+        }
+        item(key = "diagnostics-info-footer") {
+            Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                BasicComponent(
+                    title = stringResource(R.string.diagnostics_info_title),
+                    summary = stringResource(R.string.diagnostics_info_summary),
                 )
             }
         }
