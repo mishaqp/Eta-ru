@@ -2,13 +2,24 @@
 <resources>
     <string name="diagnostics_title">Диагностика</string>
     <string name="diagnostics_settings_summary">Создать безопасный отчёт для поиска ошибок</string>
+    <string name="diagnostics_collecting_title">Сбор логов включён</string>
+    <string name="diagnostics_collecting_summary">Теперь воспроизведи проблему. Закончив, нажми «Остановить сбор».</string>
+    <string name="diagnostics_ready_title">Сбор логов выключен</string>
+    <string name="diagnostics_ready_summary">Перед воспроизведением проблемы нажми «Начать сбор».</string>
     <string name="diagnostics_info_title">Что попадёт в отчёт</string>
-    <string name="diagnostics_info_summary">События агента, ошибки, HTTP-коды, раунды и названия инструментов. Чаты, память, API-ключи и содержимое файлов исключены.</string>
+    <string name="diagnostics_info_summary">Все события агента, ошибки со стеком, HTTP-коды, раунды и названия инструментов — до 2 МБ. Чаты, память, API-ключи и содержимое файлов исключены.</string>
     <string name="diagnostics_actions">Действия</string>
+    <string name="diagnostics_start">Начать сбор</string>
+    <string name="diagnostics_start_summary">Очистить старые события и начать новую полную сессию диагностики</string>
+    <string name="diagnostics_stop">Остановить сбор</string>
+    <string name="diagnostics_stop_summary">Сохранить собранные события и выключить запись</string>
+    <string name="diagnostics_stop_before_share">Сначала останови сбор, затем создай отчёт</string>
     <string name="diagnostics_share">Создать и отправить отчёт</string>
     <string name="diagnostics_share_summary">Открыть меню Android и отправить TXT-файл</string>
     <string name="diagnostics_share_title">Отправить диагностику Eta</string>
     <string name="diagnostics_share_text">Диагностический отчёт Eta</string>
+    <string name="diagnostics_started">Сбор логов начат</string>
+    <string name="diagnostics_stopped">Сбор логов остановлен</string>
     <string name="diagnostics_working">Создание отчёта…</string>
     <string name="diagnostics_clear">Очистить локальные логи</string>
     <string name="diagnostics_clear_summary">Удалить собранные диагностические события</string>
