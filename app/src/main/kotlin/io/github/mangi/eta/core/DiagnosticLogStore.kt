@@ -11,30 +11,65 @@ import java.util.TimeZone
 
 /** Persistent, bounded, privacy-filtered log ring used for support reports. */
 internal object DiagnosticLogStore {
-    private const val MAX_LOG_BYTES = 512 * 1024
-    private const val MAX_REPORT_BYTES = 256 * 1024
-    private const val MAX_LOGCAT_CHARS = 120_000
+    private const val MAX_LOG_BYTES = 2 * 1024 * 1024
+    private const val MAX_REPORT_BYTES = 1024 * 1024
+    private const val MAX_LOGCAT_CHARS = 240_000
+    private const val MAX_THROWABLE_CHARS = 16_000
     private const val LOG_FILE_NAME = "eta-agent.log"
+    private const val COLLECTION_FLAG_NAME = "collecting.flag"
     private val lock = Any()
-    private var applicationContext: Context? = null
     private var logFile: File? = null
+    private var collectionFlag: File? = null
 
     fun init(context: Context) {
         synchronized(lock) {
-            if (applicationContext == null) {
-                applicationContext = context.applicationContext
-                logFile = File(File(context.filesDir, "diagnostics"), LOG_FILE_NAME)
+            if (logFile == null) {
+                val directory = File(context.applicationContext.filesDir, "diagnostics")
+                logFile = File(directory, LOG_FILE_NAME)
+                collectionFlag = File(directory, COLLECTION_FLAG_NAME)
             }
         }
     }
 
-    fun append(level: String, message: String, throwable: Throwable? = null) {
-        val file = synchronized(lock) { logFile } ?: return
-        val safeLevel = level.toSafeLogToken(8).uppercase(Locale.US)
-        val safeMessage = redact(message).replace(Regex("[\\r\\n\\u0000]+"), " ").trim()
-        val suffix = throwable?.let { " exception=${it.safeLogType()}" }.orEmpty()
-        val line = "${timestamp()} $safeLevel $safeMessage$suffix\n"
+    /** True while the user has explicitly enabled a diagnostic capture session. */
+    fun isCollecting(): Boolean = synchronized(lock) {
+        collectionFlag?.isFile == true
+    }
+
+    /** Starts a fresh capture session and removes the previous session's events. */
+    fun startCollection() {
         synchronized(lock) {
+            val file = logFile ?: return
+            val flag = collectionFlag ?: return
+            runCatching {
+                file.parentFile?.mkdirs()
+                file.delete()
+                flag.writeText("started_at=${timestamp()}\n", Charsets.UTF_8)
+            }
+        }
+    }
+
+    /** Stops capture but keeps the collected events available for sharing. */
+    fun stopCollection() {
+        synchronized(lock) {
+            collectionFlag?.delete()
+        }
+    }
+
+    fun append(level: String, message: String, throwable: Throwable? = null) {
+        synchronized(lock) {
+            val file = logFile ?: return
+            // The flag is a file so every Eta process sees the same user choice.
+            if (collectionFlag?.isFile != true) return
+            val safeLevel = level.toSafeLogToken(8).uppercase(Locale.US)
+            val safeMessage = redact(message).replace(Regex("[\\r\\n\\u0000]+"), " ").trim()
+            val suffix = throwable?.let {
+                val stack = redact(it.stackTraceToString())
+                    .replace(Regex("[\\r\\n\\u0000]+"), " ")
+                    .take(MAX_THROWABLE_CHARS)
+                " exception=${it.safeLogType()} stack=$stack"
+            }.orEmpty()
+            val line = "${timestamp()} $safeLevel $safeMessage$suffix\n"
             runCatching {
                 file.parentFile?.mkdirs()
                 FileOutputStream(file, true).use { it.write(line.toByteArray(Charsets.UTF_8)) }
@@ -46,6 +81,7 @@ internal object DiagnosticLogStore {
     fun clear() {
         synchronized(lock) {
             logFile?.delete()
+            collectionFlag?.delete()
         }
     }
 
@@ -75,6 +111,7 @@ internal object DiagnosticLogStore {
             appendLine("android_release=${redact(Build.VERSION.RELEASE.orEmpty())}")
             appendLine("device=${redact(Build.MANUFACTURER)} ${redact(Build.MODEL)}")
             appendLine("process=${redact(android.app.Application.getProcessName())}")
+            appendLine("collection_active=${isCollecting()}")
             appendLine()
             appendLine("Privacy: chat messages, MEMORY.md, provider configuration, API keys and file contents are omitted.")
             appendLine()
@@ -88,7 +125,7 @@ internal object DiagnosticLogStore {
         val bounded = if (bytes.size <= MAX_REPORT_BYTES) {
             bytes
         } else {
-            val header = "Eta diagnostic report truncated to 256 KiB\n\n".toByteArray(Charsets.UTF_8)
+            val header = "Eta diagnostic report truncated to 1 MiB\n\n".toByteArray(Charsets.UTF_8)
             header + bytes.takeLast(MAX_REPORT_BYTES - header.size).toByteArray()
         }
         report.writeBytes(bounded)
