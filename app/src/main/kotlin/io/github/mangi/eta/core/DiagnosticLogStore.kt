@@ -141,7 +141,7 @@ internal object DiagnosticLogStore {
 
     private fun readEtaLogcat(): String {
         val process = runCatching {
-            Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "threadtime", "-t", "500", "-s", "Eta:*"))
+            Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-v", "threadtime", "-t", "2000", "-s", "Eta:*"))
         }.getOrNull() ?: return "logcat_unavailable"
         return runCatching {
             process.inputStream.bufferedReader().use { it.readText() }
