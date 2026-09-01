@@ -2,13 +2,24 @@
 <resources>
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_settings_summary">Create a safe report for troubleshooting</string>
+    <string name="diagnostics_collecting_title">Log capture is ON</string>
+    <string name="diagnostics_collecting_summary">Reproduce the problem now. When finished, tap Stop capture.</string>
+    <string name="diagnostics_ready_title">Log capture is OFF</string>
+    <string name="diagnostics_ready_summary">Start a fresh capture before reproducing a problem.</string>
     <string name="diagnostics_info_title">What will be included</string>
-    <string name="diagnostics_info_summary">Agent events, errors, HTTP codes, rounds and tool names. Chats, memory, API keys and file contents are excluded.</string>
+    <string name="diagnostics_info_summary">All agent events, errors with stack traces, HTTP codes, rounds and tool names are kept up to 2 MiB. Chats, memory, API keys and file contents are excluded.</string>
     <string name="diagnostics_actions">Actions</string>
+    <string name="diagnostics_start">Start capture</string>
+    <string name="diagnostics_start_summary">Clear old events and begin a new full diagnostic session</string>
+    <string name="diagnostics_stop">Stop capture</string>
+    <string name="diagnostics_stop_summary">Keep the collected events and turn logging off</string>
+    <string name="diagnostics_stop_before_share">Stop capture before creating the report</string>
     <string name="diagnostics_share">Create and share report</string>
     <string name="diagnostics_share_summary">Open Android sharing to send the TXT file</string>
     <string name="diagnostics_share_title">Share Eta diagnostics</string>
     <string name="diagnostics_share_text">Eta diagnostic report</string>
+    <string name="diagnostics_started">Log capture started</string>
+    <string name="diagnostics_stopped">Log capture stopped</string>
     <string name="diagnostics_working">Creating report…</string>
     <string name="diagnostics_clear">Clear local logs</string>
     <string name="diagnostics_clear_summary">Delete the locally collected diagnostic events</string>
