@@ -106,9 +106,11 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             .put("model", config.model)
             .put("stream", true)
             .put("messages", OpenAiRequestMessages.forChatCompletions(messages))
-            .put("tools", tools)
-            .put("tool_choice", "auto")
             .also { request ->
+                if (tools.length() > 0) {
+                    request.put("tools", tools)
+                    request.put("tool_choice", "auto")
+                }
                 if (sourceType != ProviderSourceTypes.OPENROUTER) {
                     request.put("stream_options", JSONObject().put("include_usage", true))
                 }
