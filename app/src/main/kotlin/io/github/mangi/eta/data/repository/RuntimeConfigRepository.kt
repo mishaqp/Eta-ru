@@ -164,6 +164,7 @@ internal object RuntimeConfigRepository {
             reasoningEffort = reasoningCapabilities?.let { ReasoningEffort.DEFAULT }
                 ?: ReasoningEffort.OFF,
             reasoningCapabilities = reasoningCapabilities,
+            supportsImageInput = model.supportsVision,
             customHeaders = provider.customHeaders + model.customHeaders,
             customBody = provider.customBody + model.customBody,
         )

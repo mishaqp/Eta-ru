@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
+  <string name="assistant_profile_provider">Провайдер</string>
+  <string name="assistant_profile_model">Модель</string>
+  <string name="assistant_profile_inherit_global_provider">Использовать общий провайдер</string>
+  <string name="assistant_profile_inherit_global_model">Использовать общую модель</string>
+  <string name="assistant_profile_first_enabled_model">Первая доступная модель</string>
+  <string name="assistant_profile_no_models">У этого провайдера нет доступных моделей</string>
+  <string name="assistant_profile_selection_hint">Профиль может использовать свою модель или общие настройки.</string>
   <string name="conversation_assistant_history_summary">Только диалоги выбранного ассистента</string>
   <string name="conversation_assistant_history_empty">У ассистента «%1$s» пока нет чатов</string>
 </resources>

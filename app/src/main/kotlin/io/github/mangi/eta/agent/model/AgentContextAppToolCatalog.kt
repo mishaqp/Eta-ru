@@ -50,7 +50,8 @@ internal object AgentContextAppToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "launch_app",
-                    description = "启动一个已安装 Android 应用。优先提供 package_name；只有应用名时允许模糊匹配，匹配多个会返回候选而不会启动。",
+                    description = "启动一个已安装 Android 应用并默认等待前台确认。" +
+                        "优先提供 package_name；只有应用名时允许模糊匹配，匹配多个会返回候选而不会启动。",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(
@@ -67,6 +68,18 @@ internal object AgentContextAppToolCatalog {
                                     JSONObject()
                                         .put("type", "string")
                                         .put("description", "应用显示名，例如 QQ")
+                                )
+                                .put(
+                                    "wait_for_foreground",
+                                    JSONObject()
+                                        .put("type", "boolean")
+                                        .put("description", "是否等待应用成为前台，默认 true")
+                                )
+                                .put(
+                                    "wait_timeout_ms",
+                                    JSONObject()
+                                        .put("type", "integer")
+                                        .put("description", "前台确认超时，500 到 60000 毫秒，默认 10000")
                                 )
                         )
                 )

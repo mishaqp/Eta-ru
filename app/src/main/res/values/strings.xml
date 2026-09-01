@@ -125,8 +125,15 @@
   <string name="assistant_profile_name">Name</string>
   <string name="assistant_profile_description">Description</string>
   <string name="assistant_profile_system_prompt">System prompt</string>
+  <string name="assistant_profile_provider">Provider</string>
+  <string name="assistant_profile_model">Model</string>
+  <string name="assistant_profile_inherit_global_provider">Use global provider</string>
+  <string name="assistant_profile_inherit_global_model">Use global model</string>
+  <string name="assistant_profile_first_enabled_model">Use first enabled model</string>
+  <string name="assistant_profile_no_models">No enabled models in this provider</string>
   <string name="assistant_profile_enabled">Enabled</string>
   <string name="assistant_profile_inherit_model">Uses the global provider and model</string>
+  <string name="assistant_profile_selection_hint">A profile can use its own provider and model, or inherit the global selection.</string>
   <string name="assistant_profile_name_required">Enter an assistant name</string>
   <string name="assistant_profile_saved">Assistant saved</string>
   <string name="assistant_profile_save_failed">Couldn\'t save assistant</string>

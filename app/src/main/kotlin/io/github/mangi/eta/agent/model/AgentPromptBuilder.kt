@@ -50,7 +50,13 @@ internal object AgentPromptBuilder {
                     "以及任务结束前确实需要确认最终结果时，才观察屏幕；仅当后续操作依赖特定文本或应用出现时使用 wait_for_text/wait_for_package。" +
                     "所有前台 GUI 工具执行前都会确认 Eta 无障碍服务；强制保护已开启时，未连接会请求 system_server 有限重绑。" +
                     "若工具返回 ACCESSIBILITY_UNAVAILABLE、ACCESSIBILITY_PROTECTION_UNAVAILABLE 或 ACCESSIBILITY_REPAIR_TIMEOUT，说明动作未执行，" +
-                    "不要改用坐标或 Shell 重放 GUI 动作。"
+                    "不要改用坐标或 Shell 重放 GUI 动作。" +
+                    if (!config.supportsImageInput) {
+                        "当前选择的模型明确不支持图像输入；observe_screen 始终只使用 UI 树，" +
+                            "不要请求 include_screenshot=true，也不要重复发送图片。"
+                    } else {
+                        ""
+                    }
             )
         )
         if (config.terminalTools) {

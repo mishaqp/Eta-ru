@@ -73,6 +73,8 @@ internal class AgentLocalTools(
     private val deviceSensitiveActionToolsEnabled: () -> Boolean = {
         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS)
     },
+    /** Concrete model capability, not just the provider protocol. */
+    private val imageInputEnabled: () -> Boolean = { true },
     private val memoryToolsEnabled: () -> Boolean = {
         runBlocking { AgentMemoryRepository.isEnabled() }
     },
@@ -358,7 +360,12 @@ internal class AgentLocalTools(
 
     private fun observeScreen(args: JSONObject): AgentModelClient.ToolResult {
         val startedAt = SystemClock.elapsedRealtime()
-        val options = AgentScreenObservationContract.resolve(args)
+        val requested = AgentScreenObservationContract.resolve(args)
+        val options = if (requested.includeScreenshot && !imageInputEnabled()) {
+            requested.copy(includeScreenshot = false)
+        } else {
+            requested
+        }
         val observation = screenObservationProvider?.invoke(options)
             ?: deviceController.observe(
                 includeScreenshot = options.includeScreenshot,
@@ -378,8 +385,24 @@ internal class AgentLocalTools(
                 "image=${observation.image?.bytes ?: 0} elapsed_ms=${SystemClock.elapsedRealtime() - startedAt} " +
                 "coordinate=${observation.coordinateSpace?.summary()}"
         }
+        val content = if (requested.includeScreenshot && !options.includeScreenshot) {
+            runCatching {
+                JSONObject(observation.content)
+                    .put(
+                        "image_input",
+                        JSONObject()
+                            .put("requested", true)
+                            .put("attached", false)
+                            .put("reason", "MODEL_DOES_NOT_SUPPORT_IMAGE_INPUT")
+                            .put("fallback", "UI_TREE_ONLY"),
+                    )
+                    .toString()
+            }.getOrDefault(observation.content)
+        } else {
+            observation.content
+        }
         return AgentModelClient.ToolResult(
-            content = observation.content,
+            content = content,
             images = listOfNotNull(observation.image)
         )
     }
@@ -627,12 +650,42 @@ internal class AgentLocalTools(
         }
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         context.startActivity(launchIntent)
-        logger.info("Agent local tool action=launch_app outcome=started")
+        val foreground = if (args.optBoolean("wait_for_foreground", true)) {
+            deviceController.waitForPackage(
+                packageName = app.packageName,
+                timeoutMs = args.optInt("wait_timeout_ms", 10_000),
+            )
+        } else {
+            JSONObject()
+                .put("ok", true)
+                .put("tool", "wait_for_package")
+                .put("skipped", true)
+                .toString()
+        }
+        val foregroundJson = runCatching { JSONObject(foreground) }.getOrElse {
+            JSONObject().put("ok", false).put("code", "FOREGROUND_STATUS_INVALID")
+        }
+        val foregroundConfirmed = foregroundJson.optBoolean("ok", false)
+        logger.info(
+            "Agent local tool action=launch_app outcome=" +
+                if (foregroundConfirmed) "foreground_confirmed" else "started_foreground_unconfirmed"
+        )
         return JSONObject()
             .put("ok", true)
             .put("tool", "launch_app")
             .put("app_name", app.appName)
             .put("package_name", app.packageName)
+            .put("foreground_confirmed", foregroundConfirmed)
+            .put("foreground", foregroundJson)
+            .also { result ->
+                if (!foregroundConfirmed) {
+                    result.put(
+                        "note",
+                        "Приложение запущено, но ещё не подтверждено на переднем плане; " +
+                            "перед GUI-действием вызови wait_for_package и observe_screen.",
+                    )
+                }
+            }
             .toString()
     }
 

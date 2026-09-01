@@ -36,6 +36,33 @@ class AgentModelClientLoopTest {
     }
 
     @Test
+    fun textOnlyModelDoesNotSendUserImageAttachment() {
+        val provider = ScriptedProvider(
+            assistant(content = "Продолжил по тексту", finishReason = "stop")
+        )
+
+        val result = AgentModelClient.complete(
+            config = modelConfig().copy(supportsImageInput = false),
+            prompt = "Проанализируй вложение",
+            images = listOf(
+                AgentModelClient.ModelImage(
+                    reference = "data:image/png;base64,c2NyZWVu",
+                    mimeType = "image/png",
+                    bytes = 6,
+                    source = "user_attach",
+                )
+            ),
+            toolExecutor = AgentModelClient.ToolExecutor { error("不应调用工具") },
+            provider = provider,
+        )
+
+        assertEquals("Продолжил по тексту", result.content)
+        val request = provider.requests.single().toString()
+        assertFalse(request.contains("data:image/png"))
+        assertTrue(request.contains("только текст"))
+    }
+
+    @Test
     fun toolBatchFeedsResultsBackInSourceOrder() {
         val provider = ScriptedProvider(
             assistant(
@@ -482,6 +509,73 @@ class AgentModelClientLoopTest {
 
         assertEquals(listOf("assistant", "tool"), failure.transcript.map { it.role })
         assertEquals("先检查状态", failure.reasoningContent)
+    }
+
+    @Test
+    fun unsupportedToolImageRetriesTheSameTurnWithoutScreenshot() {
+        val screenshot = "data:image/png;base64,c2NyZWVu"
+        val requests = mutableListOf<JSONArray>()
+        var firstResponse = true
+        val provider = object : AgentProviderClient {
+            override val id: String = "image-rejecting"
+            override val capabilities = ProviderCapabilities(
+                endpoint = EndpointKind.CHAT_COMPLETIONS,
+                streamingText = true,
+                streamingToolCalls = true,
+                imageInput = true,
+                toolResultImages = false,
+                strictTools = false,
+                parallelToolCalls = false,
+            )
+
+            override fun complete(
+                request: ProviderRequest,
+                runController: AgentRunController,
+                onEvent: (ProviderEvent) -> Unit,
+            ): ProviderResponse {
+                val captured = JSONArray(request.messages.toString())
+                requests += captured
+                if (captured.toString().contains(screenshot)) {
+                    error("模型接口返回 HTTP 404: No endpoints found that support image input")
+                }
+                return if (firstResponse) {
+                    firstResponse = false
+                    ProviderResponse(
+                        assistant(
+                            finishReason = "tool_calls",
+                            toolCalls = listOf(toolCall("observe", "observe_screen", "{}")),
+                        )
+                    )
+                } else {
+                    ProviderResponse(assistant(content = "Продолжил по UI-дереву", finishReason = "stop"))
+                }
+            }
+        }
+
+        val result = AgentModelClient.complete(
+            config = modelConfig(),
+            prompt = "Наблюдай экран",
+            toolExecutor = AgentModelClient.ToolExecutor {
+                AgentModelClient.ToolResult(
+                    content = JSONObject().put("ok", true).toString(),
+                    images = listOf(
+                        AgentModelClient.ModelImage(
+                            reference = screenshot,
+                            mimeType = "image/png",
+                            bytes = 6,
+                            source = "screen",
+                        )
+                    ),
+                )
+            },
+            provider = provider,
+        )
+
+        assertEquals("Продолжил по UI-дереву", result.content)
+        assertEquals(3, requests.size)
+        assertTrue(requests[1].toString().contains(screenshot))
+        assertFalse(requests[2].toString().contains(screenshot))
+        assertTrue(requests[2].toString().contains("Скриншот недоступен"))
     }
 
     @Test

@@ -94,10 +94,21 @@ internal object AgentModelClient {
         onEvent: (AgentEvent) -> Unit = {}
     ): ModelResponse.Text {
         config.validate()
+        // Do not send user attachments to a model that is explicitly marked text-only. This
+        // avoids a provider-side 404 before the loop can even apply its screenshot fallback.
+        // The attachment remains in the UI/archive; the model receives a truthful note and can
+        // continue with the textual part of the request.
+        val effectiveImages = images.takeIf { config.supportsImageInput }.orEmpty()
+        val effectivePrompt = if (images.isNotEmpty() && effectiveImages.isEmpty()) {
+            "$prompt\n\n[Вложения-изображения пропущены: выбранная модель принимает только текст. " +
+                "Продолжай по тексту запроса и доступным инструментам.]"
+        } else {
+            prompt
+        }
         val messages = AgentPromptBuilder.buildInitialMessages(
             config,
-            prompt,
-            images,
+            effectivePrompt,
+            effectiveImages,
             history,
             skillContext,
             memoryContext,
@@ -118,8 +129,8 @@ internal object AgentModelClient {
         }
         onEvent(
             AgentEvent.RunStarted(
-                initialImages = images.size,
-                initialImageBytes = images.sumOf { it.bytes },
+                initialImages = effectiveImages.size,
+                initialImageBytes = effectiveImages.sumOf { it.bytes },
                 toolCount = tools.length(),
                 terminalTools = config.terminalTools
             )
@@ -214,6 +225,13 @@ internal object AgentModelClient {
         val thinkingEnabled: Boolean = false,
         val reasoningEffort: ReasoningEffort? = null,
         val reasoningCapabilities: ModelReasoningCapabilities? = null,
+        /**
+         * Whether this concrete model accepts image input. Provider protocol support is not
+         * enough here: many OpenAI-compatible gateways expose text-only models behind the same
+         * endpoint. Keep the legacy default permissive; the selected model metadata supplies the
+         * accurate value for new requests, while AgentLoop still has a capability fallback.
+         */
+        val supportsImageInput: Boolean = true,
         val extraBodyJson: String = "",
         val customHeaders: List<CustomHeader> = emptyList(),
         val customBody: List<CustomBody> = emptyList()

@@ -43,6 +43,7 @@ internal class AgentLoop(
     private val accumulatedReasoning = StringBuilder()
     private val sensitiveToolCallIds = linkedSetOf<String>()
     private var pendingToolImageMessage: JSONObject? = null
+    private var imageInputFallbackUsed = false
 
     fun reasoningSnapshot(): String = accumulatedReasoning.toString().trim()
 
@@ -145,11 +146,10 @@ internal class AgentLoop(
     }
 
     private fun completeRound(round: Int, forceCompaction: Boolean = false): ProviderResponse {
-        val requestMessages = contextCompactor.prepare(messages, force = forceCompaction)
-        return provider.complete(
+        fun request(messagesForRound: JSONArray): ProviderResponse = provider.complete(
             request = ProviderRequest(
                 config = config,
-                messages = requestMessages,
+                messages = messagesForRound,
                 tools = tools,
             ),
             runController = runController,
@@ -162,6 +162,61 @@ internal class AgentLoop(
             }
             providerEvent.toAgentEvent(round)?.let(onEvent)
         }
+
+        val requestMessages = contextCompactor.prepare(messages, force = forceCompaction)
+        return try {
+            request(requestMessages)
+        } catch (throwable: Throwable) {
+            // Some OpenAI-compatible gateways advertise the same protocol for text-only and
+            // vision models. If a transient tool screenshot reaches such a model, retry the
+            // same turn with the UI-tree/tool text only instead of killing the whole run.
+            if (
+                !imageInputFallbackUsed &&
+                pendingToolImageMessage != null &&
+                isImageInputUnsupported(throwable)
+            ) {
+                imageInputFallbackUsed = true
+                discardPendingToolImageMessage()
+                messages.put(
+                    AgentConversationCodec.userTextMessage(
+                        "Скриншот недоступен для выбранной модели. Продолжай по тексту " +
+                            "и UI-дереву из результата observe_screen, не запрашивая изображение повторно.",
+                    )
+                )
+                request(contextCompactor.prepare(messages, force = forceCompaction))
+            } else {
+                throw throwable
+            }
+        }
+    }
+
+    private fun isImageInputUnsupported(throwable: Throwable): Boolean {
+        var current: Throwable? = throwable
+        repeat(8) {
+            val message = current?.message?.lowercase().orEmpty()
+            val imageMentioned = listOf(
+                "image input",
+                "image_url",
+                "vision",
+                "multimodal",
+                "图像",
+                "图片",
+            ).any(message::contains)
+            val capabilityRejected = listOf(
+                "no endpoints",
+                "not support",
+                "unsupported",
+                "does not support",
+                "doesn't support",
+                "not accept",
+                "不支持",
+            ).any(message::contains)
+            if (imageMentioned && capabilityRejected) {
+                return true
+            }
+            current = current?.cause
+        }
+        return false
     }
 
     private fun appendPendingSteeringMessage(): Boolean {
