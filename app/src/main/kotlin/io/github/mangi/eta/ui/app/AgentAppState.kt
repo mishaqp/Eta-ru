@@ -886,7 +886,6 @@ internal class AgentAppState(
     }
 
     fun selectAssistant(assistantId: String) {
-        if (homeState.isStreaming) return
         val profile = assistantProfiles.firstOrNull {
             it.id == assistantId && it.enabled
         } ?: return

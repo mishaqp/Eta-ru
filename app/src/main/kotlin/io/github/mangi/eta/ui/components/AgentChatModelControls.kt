@@ -74,7 +74,10 @@ internal fun AgentAssistantPickerButton(
     var showPopup by remember { mutableStateOf(false) }
     val selected = enabledProfiles.firstOrNull { it.id == selectedAssistantId }
         ?: enabledProfiles.first()
-    val enabled = !isStreaming && enabledProfiles.size > 1
+    // Assistant switching is intentionally allowed while the current conversation streams.
+    // Runtime owns each conversation independently, so this opens the selected assistant's
+    // own history (or a clean draft) without interrupting the run in the previous chat.
+    val enabled = enabledProfiles.size > 1
     LaunchedEffect(enabled) {
         if (!enabled) showPopup = false
     }
