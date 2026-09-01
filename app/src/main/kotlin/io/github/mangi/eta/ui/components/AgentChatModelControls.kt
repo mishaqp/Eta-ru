@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,6 +63,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 internal fun AgentAssistantPickerButton(
     profiles: List<AssistantProfile>,
+    profileModelSummaries: Map<String, String> = emptyMap(),
     selectedAssistantId: String,
     isStreaming: Boolean,
     popupAnchorTopPx: Int,
@@ -131,13 +133,25 @@ internal fun AgentAssistantPickerButton(
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = profile.name,
-                            style = MiuixTheme.textStyles.body2,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = profile.name,
+                                style = MiuixTheme.textStyles.body2,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            profileModelSummaries[profile.id]
+                                ?.takeIf(String::isNotBlank)
+                                ?.let { summary ->
+                                    Text(
+                                        text = summary,
+                                        style = MiuixTheme.textStyles.footnote1,
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                        }
                         if (profile.id == selected.id) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(

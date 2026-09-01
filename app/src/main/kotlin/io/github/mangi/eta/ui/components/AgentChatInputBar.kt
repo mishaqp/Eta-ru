@@ -100,6 +100,7 @@ internal fun AgentChatInputBar(
     input: String,
     modelPickerState: AgentModelPickerUiState,
     assistantProfiles: List<AssistantProfile>,
+    assistantModelSummaries: Map<String, String> = emptyMap(),
     selectedAssistantId: String,
     contextUsage: AgentContextUsageUi,
     showContextUsage: Boolean,
@@ -318,6 +319,7 @@ internal fun AgentChatInputBar(
                         if (assistantProfiles.isNotEmpty()) {
                             AgentAssistantPickerButton(
                                 profiles = assistantProfiles,
+                                profileModelSummaries = assistantModelSummaries,
                                 selectedAssistantId = selectedAssistantId,
                                 isStreaming = isStreaming,
                                 popupAnchorTopPx = inputContainerTopPx,

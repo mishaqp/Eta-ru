@@ -69,7 +69,9 @@ import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.R as LucideR
 import io.github.mangi.eta.agent.browser.AgentBrowserSession
 import io.github.mangi.eta.data.model.AssistantProfile
+import io.github.mangi.eta.data.model.ProviderSetting
 import io.github.mangi.eta.data.model.ReasoningEffort
+import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
 import io.github.mangi.eta.ui.model.AgentMessageUi
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
@@ -156,6 +158,17 @@ internal fun AgentChatBody(
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val isKeyboardVisible = imeBottomPx > 0
     val browserSnapshot by AgentBrowserSession.snapshots.collectAsState()
+    val providers by ProviderRepository.providersFlow().collectAsState(initial = emptyList())
+    val inheritedModelLabel = stringResource(R.string.assistant_profile_inherit_global_model)
+    val assistantModelSummaries = remember(assistantProfiles, providers, inheritedModelLabel) {
+        assistantProfiles.associate { profile ->
+            profile.id to profileModelSummary(
+                profile = profile,
+                providers = providers,
+                inheritedLabel = inheritedModelLabel,
+            )
+        }
+    }
     val contextUsage = remember(messages, modelPickerState.selectedModel) {
         latestContextUsage(messages, modelPickerState.selectedModel)
     }
@@ -210,6 +223,7 @@ internal fun AgentChatBody(
         input = input,
         modelPickerState = modelPickerState,
         assistantProfiles = assistantProfiles,
+        assistantModelSummaries = assistantModelSummaries,
         selectedAssistantId = selectedAssistantId,
         contextUsage = contextUsage,
         isStreaming = isStreaming,
@@ -259,6 +273,7 @@ private fun AgentChatScaffold(
     input: String,
     modelPickerState: AgentModelPickerUiState,
     assistantProfiles: List<AssistantProfile>,
+    assistantModelSummaries: Map<String, String>,
     selectedAssistantId: String,
     contextUsage: AgentContextUsageUi,
     isStreaming: Boolean,
@@ -314,6 +329,7 @@ private fun AgentChatScaffold(
                 input = input,
                 modelPickerState = modelPickerState,
                 assistantProfiles = assistantProfiles,
+                assistantModelSummaries = assistantModelSummaries,
                 selectedAssistantId = selectedAssistantId,
                 contextUsage = contextUsage,
                 showContextUsage = hasMessages,
@@ -901,6 +917,21 @@ private fun AgentChatBottomBar(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+private fun profileModelSummary(
+    profile: AssistantProfile,
+    providers: List<ProviderSetting>,
+    inheritedLabel: String,
+): String {
+    val provider = profile.providerId?.let { id -> providers.firstOrNull { it.id == id } }
+    val model = provider?.models?.firstOrNull { it.id == profile.modelId && it.isEnabled }
+        ?: provider?.models?.filter { it.isEnabled }?.minByOrNull { it.sortOrder }
+    return when {
+        provider == null -> inheritedLabel
+        model == null -> provider.name
+        else -> "${provider.name} / ${model.displayName.ifBlank { model.modelId }}"
     }
 }
 
