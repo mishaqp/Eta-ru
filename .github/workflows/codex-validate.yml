@@ -5,6 +5,9 @@ on:
     branches:
       - feat/codex-provider-ui
       - feat/assistant-profiles-3.0
+  pull_request:
+    branches:
+      - build/codex-release-once
   workflow_dispatch:
 
 permissions:
