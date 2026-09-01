@@ -7,6 +7,7 @@ import io.github.mangi.eta.agent.skill.SkillRuntime
 import io.github.mangi.eta.agent.task.AgentTaskBootReceiver
 import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.core.AndroidAgentLogger
+import io.github.mangi.eta.core.DiagnosticLogStore
 import io.github.mangi.eta.core.safeLogType
 import io.github.mangi.eta.data.codex.CodexAccountRepository
 import io.github.mangi.eta.data.datastore.SettingsDataStore
@@ -44,6 +45,7 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
 
     override fun onCreate() {
         super.onCreate()
+        DiagnosticLogStore.init(this)
         Prefs.initLocal(this)
         if (!AppProcessPolicy.shouldInitializeFullRuntime(Application.getProcessName(), packageName)) {
             return
