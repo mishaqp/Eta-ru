@@ -7,7 +7,7 @@
     <string name="diagnostics_ready_title">Сбор логов выключен</string>
     <string name="diagnostics_ready_summary">Перед воспроизведением проблемы нажми «Начать сбор».</string>
     <string name="diagnostics_info_title">Что попадёт в отчёт</string>
-    <string name="diagnostics_info_summary">Все события агента, ошибки со стеком, HTTP-коды, раунды и названия инструментов — до 2 МБ. Чаты, память, API-ключи и содержимое файлов исключены.</string>
+    <string name="diagnostics_info_summary">Все события агента, ошибки со стеком и до 2 000 строк Eta logcat — до 2 МБ. Чаты, память, API-ключи и содержимое файлов исключены.</string>
     <string name="diagnostics_actions">Действия</string>
     <string name="diagnostics_start">Начать сбор</string>
     <string name="diagnostics_start_summary">Очистить старые события и начать новую полную сессию диагностики</string>
