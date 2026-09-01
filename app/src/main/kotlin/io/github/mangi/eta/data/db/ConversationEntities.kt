@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import io.github.mangi.eta.data.model.ReasoningEffort
+import io.github.mangi.eta.data.model.DEFAULT_ASSISTANT_PROFILE_ID
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,6 +19,11 @@ internal data class ConversationEntity(
     val reasoningEffort: String = ReasoningEffort.DEFAULT.wireValue,
     @ColumnInfo(name = "history_json") val historyJson: String = "[]",
     @ColumnInfo(name = "applied_runtime_run_ids_json") val appliedRuntimeRunIdsJson: String = "[]",
+    @ColumnInfo(
+        name = "assistant_profile_id",
+        defaultValue = "'default'",
+    )
+    val assistantProfileId: String = DEFAULT_ASSISTANT_PROFILE_ID,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
 )
@@ -28,6 +34,7 @@ internal data class ConversationMetadata(
     @ColumnInfo(name = "thinking_enabled") val thinkingEnabled: Boolean,
     @ColumnInfo(name = "reasoning_effort") val reasoningEffort: String,
     @ColumnInfo(name = "applied_runtime_run_ids_json") val appliedRuntimeRunIdsJson: String,
+    @ColumnInfo(name = "assistant_profile_id") val assistantProfileId: String,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
 )

@@ -199,6 +199,18 @@ internal fun SettingsScreen(
                 SmallTitle(stringResource(R.string.settings_llm_providers))
                 Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
                     ArrowPreference(
+                        title = stringResource(R.string.route_assistant_profiles),
+                        summary = stringResource(R.string.assistant_profiles_settings_summary),
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_bot,
+                                tint = ColorOSRoyalBlue,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.AssistantProfiles) },
+                    )
+                    PrefDivider()
+                    ArrowPreference(
                         title = stringResource(R.string.ui_model_provider_e8c7f5),
                         summary = providerSummary,
                         startAction = {

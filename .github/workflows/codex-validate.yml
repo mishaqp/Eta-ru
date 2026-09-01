@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - feat/codex-provider-ui
+      - feat/assistant-profiles-3.0
+  pull_request:
+    branches:
+      - build/codex-release-once
   workflow_dispatch:
 
 permissions:
@@ -51,3 +55,5 @@ jobs:
           --tests io.github.mangi.eta.agent.runtime.AgentInterruptedProgressStoreTest
           --tests io.github.mangi.eta.ui.app.AgentRuntimeTraceLocalizationTest
           --tests io.github.mangi.eta.agent.model.OpenAiRequestMessagesTest
+          --tests io.github.mangi.eta.agent.runtime.AgentRuntimeWireTest
+          --tests io.github.mangi.eta.ui.app.AgentConversationStoreTest

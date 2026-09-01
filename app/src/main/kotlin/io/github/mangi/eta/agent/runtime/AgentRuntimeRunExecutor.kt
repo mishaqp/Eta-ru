@@ -83,10 +83,14 @@ internal class AgentRuntimeRunExecutor(
                 cacheRoot = appContext.cacheDir,
                 baseClient = AgentHttpClient.client,
             )
-            val skillContext = SkillContext(
-                installedSkills = skillIndexService.listInstalledSkills()
-                    .filter { SkillCompatibilityChecker.evaluate(it).available },
-            )
+            val skillContext = if (request.config.skillsEnabled) {
+                SkillContext(
+                    installedSkills = skillIndexService.listInstalledSkills()
+                        .filter { SkillCompatibilityChecker.evaluate(it).available },
+                )
+            } else {
+                SkillContext.EMPTY
+            }
             val memoryEnabled = runBlocking { AgentMemoryRepository.isEnabled() }
             val memoryContext = if (memoryEnabled) {
                 runCatching {
@@ -104,13 +108,17 @@ internal class AgentRuntimeRunExecutor(
                 AgentMemoryContext.DISABLED
             }
             val pendingSkillConflict = PendingSkillConflictCapabilityParser.parse(request.history)
-            val mcpSnapshot = runBlocking {
-                runCatching { McpRunSnapshot.load() }.getOrElse { throwable ->
-                    AndroidAgentLogger.warnThrottled("agent_mcp_snapshot_failed") {
-                        "MCP tool snapshot unavailable: type=${throwable.safeLogType()}"
+            val mcpSnapshot = if (request.config.mcpEnabled) {
+                runBlocking {
+                    runCatching { McpRunSnapshot.load() }.getOrElse { throwable ->
+                        AndroidAgentLogger.warnThrottled("agent_mcp_snapshot_failed") {
+                            "MCP tool snapshot unavailable: type=${throwable.safeLogType()}"
+                        }
+                        McpRunSnapshot.EMPTY
                     }
-                    McpRunSnapshot.EMPTY
                 }
+            } else {
+                McpRunSnapshot.EMPTY
             }
             val mcpTools = JSONArray().also(mcpSnapshot::appendModelTools)
             val executor = AgentLocalTools(
@@ -137,6 +145,7 @@ internal class AgentRuntimeRunExecutor(
                 memoryToolsEnabled = {
                     runBlocking { AgentMemoryRepository.isEnabled() }
                 },
+                skillsEnabled = { request.config.skillsEnabled },
                 screenshotExcludedPackages = {
                     entrySurfaceGuard?.consumeScreenshotExcludedPackages().orEmpty()
                 },

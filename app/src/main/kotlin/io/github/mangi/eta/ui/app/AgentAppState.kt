@@ -39,6 +39,7 @@ import io.github.mangi.eta.core.safeLogType
 import io.github.mangi.eta.data.model.ModelReasoningCapabilities
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.repository.AgentMemoryRepository
+import io.github.mangi.eta.data.repository.AssistantProfileRepository
 import io.github.mangi.eta.data.repository.EtaBackupRepository
 import io.github.mangi.eta.data.repository.EtaBackupSummary
 import io.github.mangi.eta.data.repository.ProviderRepository
@@ -76,6 +77,7 @@ import io.github.mangi.eta.ui.model.ToolActivityMessageUi
 import io.github.mangi.eta.ui.model.ToolGroupUi
 import io.github.mangi.eta.ui.model.ToolItemUi
 import io.github.mangi.eta.ui.model.UserMessageUi
+import io.github.mangi.eta.data.model.DEFAULT_ASSISTANT_PROFILE_ID
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
@@ -117,10 +119,13 @@ internal class AgentAppState(
     private var currentReasoningCapabilities: ModelReasoningCapabilities? = null
     private var fileAttachmentOwnerVersion = 0L
 
-    private var selectedConversationId: String? = initialConversations.selectedConversationId
     private var conversationsById: Map<String, AgentChatHomeUiState> = initialConversations.conversationsById
     private var conversationTitles: Map<String, String> = initialConversations.titles
     private var conversationUpdatedAt: Map<String, Long> = initialConversations.updatedAt
+    private var conversationProfileIds: Map<String, String> = initialConversations.profileIds
+    private var activeAssistantProfileId: String = DEFAULT_ASSISTANT_PROFILE_ID
+    private var selectedConversationId: String? = initialConversations.selectedConversationId
+        ?.takeIf { conversationProfileIds[it] == activeAssistantProfileId }
 
     var homeState by mutableStateOf(
         selectedConversationId?.let(conversationsById::get) ?: emptyChatState(defaultThinkingEnabled)
@@ -157,6 +162,7 @@ internal class AgentAppState(
     init {
         refreshConversationSummaries()
         observeRuntimeSelection()
+        observeAssistantProfile()
         runtimeRecoveryInProgress.set(true)
         scope.launch(Dispatchers.IO) {
             try {
@@ -194,6 +200,40 @@ internal class AgentAppState(
                     }
                 }
         }
+    }
+
+    private fun observeAssistantProfile() {
+        scope.launch(Dispatchers.IO) {
+            AssistantProfileRepository.activeProfileFlow().collectLatest { profile ->
+                val profileId = profile?.id ?: return@collectLatest
+                withContext(Dispatchers.Main) {
+                    activateAssistantProfile(profileId)
+                }
+            }
+        }
+    }
+
+    private fun activateAssistantProfile(profileId: String) {
+        activeAssistantProfileId = profileId
+        val selectedForProfile = selectedConversationId
+            ?.takeIf { conversationProfileIds[it] == profileId }
+            ?: conversationsById.keys
+                .filter { conversationProfileIds[it] == profileId }
+                .maxByOrNull { conversationUpdatedAt[it] ?: 0L }
+        fileAttachmentOwnerVersion += 1
+        selectedConversationId = selectedForProfile
+        homeState = selectedForProfile
+            ?.let(conversationsById::get)
+            ?.withCurrentReasoningCapabilities()
+            ?: emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
+        selectedForProfile?.let { id ->
+            conversationsById = conversationsById + (id to homeState)
+        }
+        conversationPaneState = conversationPaneState.copy(
+            selectedConversationId = selectedConversationId,
+            searchQuery = "",
+        )
+        refreshConversationSummaries()
     }
 
     private fun applyReasoningCapabilities(capabilities: ModelReasoningCapabilities?) {
@@ -405,16 +445,9 @@ internal class AgentAppState(
             conversationsById = snapshot.conversationsById
             conversationTitles = snapshot.titles
             conversationUpdatedAt = snapshot.updatedAt
+            conversationProfileIds = snapshot.profileIds
             fileAttachmentOwnerVersion += 1
-            homeState = selectedConversationId
-                ?.let(conversationsById::get)
-                ?.withCurrentReasoningCapabilities()
-                ?: emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
-            conversationPaneState = conversationPaneState.copy(
-                selectedConversationId = selectedConversationId,
-                searchQuery = "",
-            )
-            refreshConversationSummaries()
+            activateAssistantProfile(activeAssistantProfileId)
         }
     }
 
@@ -683,6 +716,10 @@ internal class AgentAppState(
         if (conversationTitles[conversationId].isNullOrBlank()) {
             conversationTitles = conversationTitles + (conversationId to payload.title)
         }
+        if (conversationId !in conversationProfileIds) {
+            conversationProfileIds = conversationProfileIds +
+                (conversationId to activeAssistantProfileId)
+        }
         runConversationIds[runId] = conversationId
         updateConversation(
             conversationId,
@@ -760,6 +797,7 @@ internal class AgentAppState(
 
     fun selectConversation(conversationId: String) {
         if (homeState.messageEdit != null) cancelMessageEdit()
+        if (conversationProfileIds[conversationId] != activeAssistantProfileId) return
         val state = conversationsById[conversationId] ?: return
         fileAttachmentOwnerVersion += 1
         selectedConversationId = conversationId
@@ -793,9 +831,12 @@ internal class AgentAppState(
         conversationsById = conversationsById - conversationId
         conversationTitles = conversationTitles - conversationId
         conversationUpdatedAt = conversationUpdatedAt - conversationId
+        conversationProfileIds = conversationProfileIds - conversationId
         if (wasSelected) {
             fileAttachmentOwnerVersion += 1
-            val nextId = conversationsById.keys.firstOrNull()
+            val nextId = conversationsById.keys
+                .filter { conversationProfileIds[it] == activeAssistantProfileId }
+                .maxByOrNull { conversationUpdatedAt[it] ?: 0L }
             if (nextId != null) {
                 selectedConversationId = nextId
                 homeState = conversationsById.getValue(nextId).withCurrentReasoningCapabilities()
@@ -860,6 +901,9 @@ internal class AgentAppState(
 
         val conversationId = selectedConversationId ?: newConversationId().also {
             selectedConversationId = it
+        }
+        if (conversationId !in conversationProfileIds) {
+            conversationProfileIds = conversationProfileIds + (conversationId to activeAssistantProfileId)
         }
         val runId = "run-${UUID.randomUUID()}"
         val userMessage = UserMessageUi(
@@ -975,6 +1019,7 @@ internal class AgentAppState(
             conversationsById = conversationsById - conversationId
             conversationTitles = conversationTitles - conversationId
             conversationUpdatedAt = conversationUpdatedAt - conversationId
+            conversationProfileIds = conversationProfileIds - conversationId
             fileAttachmentOwnerVersion += 1
             selectedConversationId = null
             homeState = emptyChatState(defaultThinkingEnabled).withCurrentReasoningCapabilities()
@@ -2097,6 +2142,9 @@ internal class AgentAppState(
 
     private fun refreshConversationSummaries() {
         val summaries = conversationsById.entries
+            .filter { (id, _) ->
+                conversationProfileIds[id] == activeAssistantProfileId
+            }
             .sortedByDescending { (id, _) ->
                 conversationUpdatedAt[id] ?: 0L
             }
@@ -2171,6 +2219,7 @@ internal class AgentAppState(
         val conversations = conversationsById
         val titles = conversationTitles
         val timestamps = conversationUpdatedAt
+        val profileIds = conversationProfileIds
         return synchronized(persistenceLock) {
             val previous = persistenceJob
             scope.async(Dispatchers.IO) {
@@ -2182,6 +2231,7 @@ internal class AgentAppState(
                         conversationsById = conversations,
                         titles = titles,
                         updatedAt = timestamps,
+                        profileIds = profileIds,
                     )
                     onSaved?.invoke()
                     true
