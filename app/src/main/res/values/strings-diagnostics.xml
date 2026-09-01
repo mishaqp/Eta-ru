@@ -7,7 +7,7 @@
     <string name="diagnostics_ready_title">Log capture is OFF</string>
     <string name="diagnostics_ready_summary">Start a fresh capture before reproducing a problem.</string>
     <string name="diagnostics_info_title">What will be included</string>
-    <string name="diagnostics_info_summary">All agent events, errors with stack traces, HTTP codes, rounds and tool names are kept up to 2 MiB. Chats, memory, API keys and file contents are excluded.</string>
+    <string name="diagnostics_info_summary">All agent events, errors with stack traces and up to 2,000 Eta logcat lines are kept up to 2 MiB. Chats, memory, API keys and file contents are excluded.</string>
     <string name="diagnostics_actions">Actions</string>
     <string name="diagnostics_start">Start capture</string>
     <string name="diagnostics_start_summary">Clear old events and begin a new full diagnostic session</string>
