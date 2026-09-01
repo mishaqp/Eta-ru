@@ -88,6 +88,26 @@ class AgentRunRecoveryCoordinatorTest {
         assertTrue(plan.interrupted.isEmpty())
     }
 
+    @Test
+    fun multipleActiveRunsAreAllReattachedAndOnlyInactiveCheckpointIsInterrupted() {
+        val plan = AgentRunRecoveryCoordinator.plan(
+            checkpoints = listOf(
+                checkpoint("run-a"),
+                checkpoint("run-b"),
+                checkpoint("run-stale"),
+            ),
+            completedRuns = emptyList(),
+            activeStateKnown = true,
+            terminalStateKnown = true,
+            activeRunId = "run-a",
+            locallyObservedRunId = null,
+            activeRunIds = setOf("run-a", "run-b"),
+        )
+
+        assertEquals(listOf("run-a", "run-b"), plan.reattachAll.map { it.runId })
+        assertEquals(listOf("run-stale"), plan.interrupted.map { it.runId })
+    }
+
     private fun checkpoint(
         runId: String,
         owner: String = "old-process",

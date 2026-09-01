@@ -25,6 +25,15 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class AgentRuntimeWireTest {
     @Test
+    fun activeRunListRoundTripsAllRunIds() {
+        val bundle = AgentRuntimeWire.runIdsToBundle(
+            listOf("run-b", "", "run-a", "run-b")
+        )
+
+        assertEquals(listOf("run-b", "run-a", "run-b"), AgentRuntimeWire.runIdsFromBundle(bundle))
+    }
+
+    @Test
     fun attachResponsePreservesRunIdentityAndDecision() {
         val accepted = AgentRuntimeWire.attachRunResponseBundle("run-1", attached = true)
         val rejected = AgentRuntimeWire.attachRunResponseBundle("run-2", attached = false)

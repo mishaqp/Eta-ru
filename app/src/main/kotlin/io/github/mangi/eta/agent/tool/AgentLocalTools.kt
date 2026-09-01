@@ -9,6 +9,7 @@ import android.os.SystemClock
 import io.github.mangi.eta.agent.browser.AgentBrowserSession
 import io.github.mangi.eta.agent.device.RootShellDeviceController
 import io.github.mangi.eta.agent.device.BoundedRootCommandExecutor
+import io.github.mangi.eta.agent.device.AgentDeviceActionCoordinator
 import io.github.mangi.eta.agent.model.AgentModelClient
 import io.github.mangi.eta.agent.model.AgentScreenObservationContract
 import io.github.mangi.eta.agent.model.AgentSensitiveToolPolicy
@@ -159,57 +160,60 @@ internal class AgentLocalTools(
                     )
                 }
             }
-            when (toolCall.name) {
-                in AgentTaskToolNames.ALL -> AgentTaskTools.execute(context, toolCall.name, args)
-                "get_current_context" -> textResult(DeviceContextTool.current(context))
-                "search_apps" -> textResult(searchApps(args))
-                "launch_app" -> textResult(launchApp(args))
-                "open_uri" -> textResult(openUri(args))
-                "browser_use" -> browserUse(args, toolCall.id)
-                "observe_screen" -> observeScreen(args)
-                "tap" -> textResult(tap(args))
-                "tap_area" -> textResult(tapArea(args))
-                "tap_element" -> textResult(tapElement(args))
-                "long_press" -> textResult(longPress(args))
-                "long_press_element" -> textResult(longPressElement(args))
-                "swipe" -> textResult(swipe(args))
-                "scroll" -> textResult(deviceController.scroll(args.optString("direction")))
-                "scroll_element" -> textResult(scrollElement(args))
-                "input_text" -> textResult(inputText(args))
-                "replace_text" -> textResult(replaceText(args))
-                "clear_text" -> textResult(clearText(args))
-                "set_clipboard" -> textResult(setClipboard(args))
-                "get_clipboard" -> textResult(getClipboard())
-                "paste_text" -> textResult(pasteText(args))
-                "press_key" -> textResult(deviceController.pressKey(args.optString("button")))
-                "wait" -> textResult(deviceController.waitMs(args.optInt("duration_ms", 1_000)))
-                "wait_for_text" -> textResult(waitForText(args))
-                "wait_for_package" -> textResult(waitForPackage(args))
-                "open_system_panel" -> textResult(deviceController.openSystemPanel(args.optString("panel")))
-                in DEVICE_TOOL_NAMES ->
-                    structuredDeviceTools.execute(toolCall.name, args)
-                        ?: textResult(errorResult("UNKNOWN_TOOL", "未知设备工具"))
-                "read_image" -> fileVisionTool { imageTools.readImage(args) }
-                "terminal" -> textResult(terminalTool { terminal(args) })
-                "run_command" -> textResult(terminalTool { runCommand(args) })
-                "read_file" -> textResult(terminalTool { readFile(args) })
-                "write_file" -> textResult(terminalTool { writeFile(args) })
-                "list_directory" -> textResult(terminalTool { listDirectory(args) })
-                "memory_get" -> textResult(memoryGet(args))
-                "memory_write" -> textResult(memoryWrite(args))
-                "skills_list" -> textResult(skillsList(args))
-                "skills_read" -> textResult(skillsRead(args))
-                "skills_read_resource" -> textResult(skillsReadResource(args))
-                "skills_list_curated" -> textResult(skillsListCurated())
-                "skills_inspect_github" -> textResult(skillsInspectGitHub(args))
-                "skills_install_from_github" -> textResult(skillsInstallFromGitHub(args))
-                else -> textResult(
-                    errorResult(
-                        code = "UNKNOWN_TOOL",
-                        message = "未知工具：${toolCall.name}"
+            val executeTool = {
+                when (toolCall.name) {
+                    in AgentTaskToolNames.ALL -> AgentTaskTools.execute(context, toolCall.name, args)
+                    "get_current_context" -> textResult(DeviceContextTool.current(context))
+                    "search_apps" -> textResult(searchApps(args))
+                    "launch_app" -> textResult(launchApp(args))
+                    "open_uri" -> textResult(openUri(args))
+                    "browser_use" -> browserUse(args, toolCall.id)
+                    "observe_screen" -> observeScreen(args)
+                    "tap" -> textResult(tap(args))
+                    "tap_area" -> textResult(tapArea(args))
+                    "tap_element" -> textResult(tapElement(args))
+                    "long_press" -> textResult(longPress(args))
+                    "long_press_element" -> textResult(longPressElement(args))
+                    "swipe" -> textResult(swipe(args))
+                    "scroll" -> textResult(deviceController.scroll(args.optString("direction")))
+                    "scroll_element" -> textResult(scrollElement(args))
+                    "input_text" -> textResult(inputText(args))
+                    "replace_text" -> textResult(replaceText(args))
+                    "clear_text" -> textResult(clearText(args))
+                    "set_clipboard" -> textResult(setClipboard(args))
+                    "get_clipboard" -> textResult(getClipboard())
+                    "paste_text" -> textResult(pasteText(args))
+                    "press_key" -> textResult(deviceController.pressKey(args.optString("button")))
+                    "wait" -> textResult(deviceController.waitMs(args.optInt("duration_ms", 1_000)))
+                    "wait_for_text" -> textResult(waitForText(args))
+                    "wait_for_package" -> textResult(waitForPackage(args))
+                    "open_system_panel" -> textResult(deviceController.openSystemPanel(args.optString("panel")))
+                    in DEVICE_TOOL_NAMES ->
+                        structuredDeviceTools.execute(toolCall.name, args)
+                            ?: textResult(errorResult("UNKNOWN_TOOL", "未知设备工具"))
+                    "read_image" -> fileVisionTool { imageTools.readImage(args) }
+                    "terminal" -> textResult(terminalTool { terminal(args) })
+                    "run_command" -> textResult(terminalTool { runCommand(args) })
+                    "read_file" -> textResult(terminalTool { readFile(args) })
+                    "write_file" -> textResult(terminalTool { writeFile(args) })
+                    "list_directory" -> textResult(terminalTool { listDirectory(args) })
+                    "memory_get" -> textResult(memoryGet(args))
+                    "memory_write" -> textResult(memoryWrite(args))
+                    "skills_list" -> textResult(skillsList(args))
+                    "skills_read" -> textResult(skillsRead(args))
+                    "skills_read_resource" -> textResult(skillsReadResource(args))
+                    "skills_list_curated" -> textResult(skillsListCurated())
+                    "skills_inspect_github" -> textResult(skillsInspectGitHub(args))
+                    "skills_install_from_github" -> textResult(skillsInstallFromGitHub(args))
+                    else -> textResult(
+                        errorResult(
+                            code = "UNKNOWN_TOOL",
+                            message = "未知工具：${toolCall.name}"
+                        )
                     )
-                )
+                }
             }
+            AgentDeviceActionCoordinator.withLease(browserRunId, toolCall.name, executeTool)
         }.getOrElse { throwable ->
             textResult(
                 errorResult(

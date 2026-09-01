@@ -13,6 +13,7 @@ internal object AgentRunRecoveryCoordinator {
     data class Plan(
         val completed: List<Completed>,
         val reattach: AgentRunCheckpointStore.Checkpoint?,
+        val reattachAll: List<AgentRunCheckpointStore.Checkpoint> = emptyList(),
         val interrupted: List<AgentRunCheckpointStore.Checkpoint>,
     )
 
@@ -23,30 +24,36 @@ internal object AgentRunRecoveryCoordinator {
         terminalStateKnown: Boolean,
         activeRunId: String?,
         locallyObservedRunId: String?,
+        activeRunIds: Set<String> = emptySet(),
+        locallyObservedRunIds: Set<String> = emptySet(),
     ): Plan {
+        val observedRunIds = locallyObservedRunIds + listOfNotNull(locallyObservedRunId)
+        val knownActiveRunIds = activeRunIds + listOfNotNull(activeRunId)
         val uiCheckpoints = checkpoints
             .filter { it.handoff.source == AgentRuntimeWire.AGENT_UI_HANDOFF_SOURCE }
             .associateBy { it.runId }
         val completed = completedRuns
             .asSequence()
             .filter { it.handoff.source == AgentRuntimeWire.AGENT_UI_HANDOFF_SOURCE }
-            .filterNot { it.stableRunId == locallyObservedRunId }
+            .filterNot { it.stableRunId in observedRunIds }
             .sortedBy { it.createdAt }
             .map { run -> Completed(run, uiCheckpoints[run.stableRunId]) }
             .toList()
         val completedRunIds = completed.mapTo(mutableSetOf()) { it.result.stableRunId }
         val unresolved = uiCheckpoints.values
-            .filterNot { it.runId == locallyObservedRunId || it.runId in completedRunIds }
+            .filterNot { it.runId in observedRunIds || it.runId in completedRunIds }
             .sortedBy { it.createdAt }
         val active = unresolved
             .takeIf { activeStateKnown }
-            ?.singleOrNull { it.runId == activeRunId }
+            ?.filter { it.runId in knownActiveRunIds }
+            .orEmpty()
 
         return Plan(
             completed = completed,
-            reattach = active,
+            reattach = active.firstOrNull(),
+            reattachAll = active,
             interrupted = if (activeStateKnown && terminalStateKnown) {
-                unresolved.filterNot { it.runId == active?.runId }
+                unresolved.filterNot { it.runId in knownActiveRunIds }
             } else {
                 emptyList()
             },

@@ -33,6 +33,11 @@ internal class AgentRuntimeClient(
         data object Unavailable : ActiveRunQuery
     }
 
+    sealed interface ActiveRunsQuery {
+        data class Known(val runIds: List<String>) : ActiveRunsQuery
+        data object Unavailable : ActiveRunsQuery
+    }
+
     sealed interface CompletedRunsQuery {
         data class Known(val runs: List<AgentRuntimeWire.CompletedRun>) : CompletedRunsQuery
         data object Unavailable : CompletedRunsQuery
@@ -193,6 +198,29 @@ internal class AgentRuntimeClient(
         }
     }
 
+    /** Возвращает все живые runtime-запуски; старый queryActiveRun оставлен для совместимости. */
+    fun queryActiveRuns(): ActiveRunsQuery {
+        val responseLatch = CountDownLatch(1)
+        val runIdsRef = AtomicReference<List<String>>(emptyList())
+        val clientMessenger = Messenger(
+            ActiveRunsHandler { runIds ->
+                runIdsRef.set(runIds)
+                responseLatch.countDown()
+            }
+        )
+
+        return withRuntimeMessenger<ActiveRunsQuery>(ActiveRunsQuery.Unavailable) { serviceMessenger ->
+            val msg = Message.obtain(null, AgentRuntimeWire.MSG_QUERY_ACTIVE_RUNS)
+            msg.replyTo = clientMessenger
+            serviceMessenger.send(msg)
+            if (!responseLatch.await(RESPONSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                ActiveRunsQuery.Unavailable
+            } else {
+                ActiveRunsQuery.Known(runIdsRef.get())
+            }
+        }
+    }
+
     /** 重新订阅一个仍存活的 run；Service 会先重放安全事件，再继续推送实时事件。 */
     fun attachRun(
         runId: String,
@@ -297,6 +325,16 @@ internal class AgentRuntimeClient(
         override fun handleMessage(msg: Message) {
             if (msg.what == AgentRuntimeWire.MSG_QUERY_ACTIVE_RUN_RESPONSE) {
                 onResponse(AgentRuntimeWire.runIdFromBundle(msg.data ?: return))
+            }
+        }
+    }
+
+    private class ActiveRunsHandler(
+        private val onResponse: (List<String>) -> Unit,
+    ) : Handler(Looper.getMainLooper()) {
+        override fun handleMessage(msg: Message) {
+            if (msg.what == AgentRuntimeWire.MSG_QUERY_ACTIVE_RUNS_RESPONSE) {
+                onResponse(AgentRuntimeWire.runIdsFromBundle(msg.data ?: return))
             }
         }
     }

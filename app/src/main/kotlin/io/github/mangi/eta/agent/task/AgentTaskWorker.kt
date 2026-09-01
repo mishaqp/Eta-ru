@@ -66,14 +66,6 @@ internal class AgentTaskWorker(
             }
         }
 
-        // AgentRuntimeService is single-flight and replaces its current session. Never let a
-        // background task cancel a foreground request or another task.
-        val active = AgentRuntimeClient(context, AndroidAgentLogger).queryActiveRun()
-        if (active is AgentRuntimeClient.ActiveRunQuery.Unavailable) return Result.retry()
-        if (active is AgentRuntimeClient.ActiveRunQuery.Known && active.runId != null) {
-            return Result.retry()
-        }
-
         val runId = UUID.randomUUID().toString()
         val run = AgentTaskRunEntity(
             id = UUID.randomUUID().toString(),
@@ -148,7 +140,7 @@ internal class AgentTaskWorker(
                 history = emptyList(),
                 handoff = AgentRuntimeWire.EntryHandoff(
                     id = "eta-task-${task.id}-$runId",
-                    source = TASK_HANDOFF_SOURCE,
+                    source = AgentRuntimeWire.ETA_TASK_HANDOFF_SOURCE,
                     payload = JSONObject()
                         .put("task_id", task.id)
                         .put("task_name", task.name)
@@ -222,7 +214,6 @@ internal class AgentTaskWorker(
         const val KEY_MANUAL = "eta_task_manual"
         const val KEY_SCHEDULED_AT = "eta_task_scheduled_at"
         const val KEY_CATCHUP = "eta_task_catchup"
-        const val TASK_HANDOFF_SOURCE = "eta_task"
         private const val MAX_RESULT_CHARS = 12_000
         private val locks = ConcurrentHashMap<String, Mutex>()
     }

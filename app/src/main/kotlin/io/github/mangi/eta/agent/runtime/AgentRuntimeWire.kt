@@ -27,6 +27,7 @@ import kotlinx.serialization.json.Json
 internal object AgentRuntimeWire {
     const val AGENT_UI_HANDOFF_SOURCE = "agent_ui"
     const val ETA_VOICE_HANDOFF_SOURCE = "eta_voice"
+    const val ETA_TASK_HANDOFF_SOURCE = "eta_task"
 
     internal class PayloadTooLargeException(sizeBytes: Int) : IllegalArgumentException(
         "Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试"
@@ -71,6 +72,12 @@ internal object AgentRuntimeWire {
 
     /** service -> client：返回是否成功重新订阅指定 run。 */
     const val MSG_ATTACH_RUN_RESPONSE = 12
+
+    /** client -> service：查询当前所有仍在执行或提交终态的 run。 */
+    const val MSG_QUERY_ACTIVE_RUNS = 13
+
+    /** service -> client：返回当前所有活跃 runId。 */
+    const val MSG_QUERY_ACTIVE_RUNS_RESPONSE = 14
 
     private const val MODULE_PACKAGE = "io.github.mangi.eta"
     private const val SERVICE_CLASS = "io.github.mangi.eta.agent.runtime.AgentRuntimeService"
@@ -130,6 +137,7 @@ internal object AgentRuntimeWire {
         "handoff_dismiss_entry_surface_on_foreground_operation"
     private const val KEY_CREATED_AT = "created_at"
     private const val KEY_RESULTS = "results"
+    private const val KEY_RUN_IDS = "run_ids"
     private const val MAX_RESULT_CONTENT_CHARS = 64_000
     private const val MAX_RESULT_REASONING_CHARS = 32_000
     private const val MAX_DRAIN_CONTENT_CHARS = 16_000
@@ -497,6 +505,14 @@ internal object AgentRuntimeWire {
         bundle.getParcelableArrayList(KEY_RESULTS, Bundle::class.java)
             .orEmpty()
             .map(::completedRunFromBundle)
+
+    fun runIdsToBundle(runIds: List<String>): Bundle = Bundle().apply {
+        putStringArrayList(KEY_RUN_IDS, ArrayList(runIds))
+    }
+
+    fun runIdsFromBundle(bundle: Bundle): List<String> =
+        bundle.getStringArrayList(KEY_RUN_IDS).orEmpty()
+            .filter(String::isNotBlank)
 
     fun ackBundle(runId: String): Bundle = Bundle().apply {
         putString(KEY_RUN_ID, runId)
