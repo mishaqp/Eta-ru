@@ -35,6 +35,32 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], qualifiers = "en-rUS")
 class AgentConversationStoreTest {
+    @Test
+    fun saveAndLoadKeepsAssistantProfileOwnership() {
+        runBlocking {
+            AgentConversationStore.save(
+                context = context,
+                selectedConversationId = "profile-chat",
+                conversationsById = mapOf(
+                    "profile-chat" to AgentChatHomeUiState(
+                        messages = emptyList(),
+                        input = "",
+                        isStreaming = false,
+                        thinkingEnabled = false,
+                    ),
+                ),
+                titles = mapOf("profile-chat" to "Root chat"),
+                updatedAt = mapOf("profile-chat" to 1L),
+                profileIds = mapOf("profile-chat" to "root-assistant"),
+            )
+        }
+
+        assertEquals(
+            "root-assistant",
+            AgentConversationStore.load(context).profileIds.getValue("profile-chat"),
+        )
+    }
+
     private lateinit var context: Context
 
     @Before

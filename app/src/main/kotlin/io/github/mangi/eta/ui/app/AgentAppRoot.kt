@@ -76,6 +76,8 @@ import io.github.mangi.eta.ui.screens.skills.AgentSkillsScreen
 import io.github.mangi.eta.ui.screens.terminal.LinuxEnvironmentScreen
 import io.github.mangi.eta.ui.screens.terminal.TerminalScreen
 import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
+import io.github.mangi.eta.ui.screens.assistants.AssistantProfileDetailScreen
+import io.github.mangi.eta.ui.screens.assistants.AssistantProfilesScreen
 
 /**
  * Agent App 根组件：持有本地导航栈，并把 Screen actions 交给 [AgentAppState]。
@@ -460,6 +462,19 @@ fun AgentAppRoot(
                     context = context,
                     onNavigate = { route -> pushRoute(route) },
                     onBack = ::popRoute
+                )
+            }
+            entry<AppRoute.AssistantProfiles>(swipeDismiss = swipeDismiss) {
+                AssistantProfilesScreen(
+                    onNavigate = { route -> pushRoute(route) },
+                    onBack = ::popRoute,
+                )
+            }
+            entry<AppRoute.AssistantProfileDetail>(swipeDismiss = swipeDismiss) { route ->
+                AssistantProfileDetailScreen(
+                    profileId = route.profileId,
+                    onNavigate = { destination -> pushRoute(destination) },
+                    onBack = ::popRoute,
                 )
             }
             entry<AppRoute.AppearanceSettings>(swipeDismiss = swipeDismiss) {

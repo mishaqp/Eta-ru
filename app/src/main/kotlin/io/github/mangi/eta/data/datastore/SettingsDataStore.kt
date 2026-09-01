@@ -15,12 +15,16 @@ import io.github.mangi.eta.data.model.AppearancePaletteStyle
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
 import io.github.mangi.eta.data.model.AppearanceTopBarBlurStyle
+import io.github.mangi.eta.data.model.AssistantProfilesState
 import io.github.mangi.eta.data.model.Settings
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 internal object SettingsDataStore {
     private const val STORE_NAME = "eta_settings"
@@ -40,7 +44,12 @@ internal object SettingsDataStore {
     private val APPEARANCE_PREDICTIVE_BACK_ENABLED =
         booleanPreferencesKey("appearance_predictive_back_enabled")
     private val APPEARANCE_INTERFACE_SCALE = floatPreferencesKey("appearance_interface_scale")
+    private val ASSISTANT_PROFILES_JSON = stringPreferencesKey("assistant_profiles_json")
     private const val SELECTED_MODEL_BY_PROVIDER_PREFIX = "selected_model_id_by_provider."
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = STORE_NAME)
 
@@ -105,6 +114,44 @@ internal object SettingsDataStore {
 
     fun appearanceSettingsFlow(): Flow<AppearanceSettings> =
         settingsFlow().map { it.appearance }
+
+    fun assistantProfilesStateFlow(): Flow<AssistantProfilesState> {
+        ensureInitialized()
+        return dataStore.data
+            .catch { cause ->
+                if (cause is IOException) emit(emptyPreferences()) else throw cause
+            }
+            .map { preferences ->
+                val encoded = preferences[ASSISTANT_PROFILES_JSON].orEmpty()
+                if (encoded.isBlank()) {
+                    AssistantProfilesState()
+                } else {
+                    runCatching {
+                        json.decodeFromString<AssistantProfilesState>(encoded)
+                    }.getOrElse { AssistantProfilesState() }
+                }
+            }
+    }
+
+    suspend fun assistantProfilesState(): AssistantProfilesState =
+        assistantProfilesStateFlow().first()
+
+    suspend fun updateAssistantProfilesState(
+        transform: (AssistantProfilesState) -> AssistantProfilesState,
+    ) {
+        ensureInitialized()
+        dataStore.edit { preferences ->
+            val current = preferences[ASSISTANT_PROFILES_JSON]
+                ?.takeIf(String::isNotBlank)
+                ?.let { encoded ->
+                    runCatching {
+                        json.decodeFromString<AssistantProfilesState>(encoded)
+                    }.getOrNull()
+                }
+                ?: AssistantProfilesState()
+            preferences[ASSISTANT_PROFILES_JSON] = json.encodeToString(transform(current))
+        }
+    }
 
     suspend fun setSelectedProviderId(id: String?) {
         updateSettings { it.copy(selectedProviderId = id) }

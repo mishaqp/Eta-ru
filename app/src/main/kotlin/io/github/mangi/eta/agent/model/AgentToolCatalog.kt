@@ -10,6 +10,7 @@ internal object AgentToolCatalog {
         deviceDirectTools: Boolean = true,
         deviceSensitiveReadTools: Boolean = false,
         deviceSensitiveActionTools: Boolean = false,
+        skillsEnabled: Boolean = true,
         skillGitHubDiscovery: Boolean = false,
         skillGitHubInstall: Boolean = false,
         memoryTools: Boolean = false,
@@ -25,11 +26,13 @@ internal object AgentToolCatalog {
                 sensitiveActionTools = deviceSensitiveActionTools,
             )
             if (browserTools) AgentBrowserToolCatalog.appendTo(tools)
-            AgentSkillToolCatalog.appendTo(
-                tools,
-                githubDiscovery = skillGitHubDiscovery,
-                githubInstall = skillGitHubInstall,
-            )
+            if (skillsEnabled) {
+                AgentSkillToolCatalog.appendTo(
+                    tools,
+                    githubDiscovery = skillGitHubDiscovery,
+                    githubInstall = skillGitHubInstall,
+                )
+            }
             if (memoryTools) AgentMemoryToolCatalog.appendTo(tools)
             if (terminalTools) {
                 AgentFileVisionToolCatalog.appendTo(tools)

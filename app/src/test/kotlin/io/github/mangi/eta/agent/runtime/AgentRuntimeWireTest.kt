@@ -25,6 +25,31 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class AgentRuntimeWireTest {
     @Test
+    fun assistantProfileToolGatesSurviveRuntimeIpc() {
+        val request = AgentRuntimeWire.RunRequest(
+            runId = "profile-gates",
+            prompt = "test",
+            config = AgentModelClient.ModelConfig(
+                baseUrl = "https://example.invalid/v1",
+                apiKey = "test-key",
+                model = "test-model",
+                systemPrompt = "profile prompt",
+                skillsEnabled = false,
+                mcpEnabled = false,
+            ),
+            images = emptyList(),
+        )
+
+        val restored = AgentRuntimeWire.runRequestFromBundle(
+            AgentRuntimeWire.toLegacyBundle(request),
+        )
+
+        assertFalse(restored.config.skillsEnabled)
+        assertFalse(restored.config.mcpEnabled)
+        assertEquals("profile prompt", restored.config.systemPrompt)
+    }
+
+    @Test
     fun attachResponsePreservesRunIdentityAndDecision() {
         val accepted = AgentRuntimeWire.attachRunResponseBundle("run-1", attached = true)
         val rejected = AgentRuntimeWire.attachRunResponseBundle("run-2", attached = false)

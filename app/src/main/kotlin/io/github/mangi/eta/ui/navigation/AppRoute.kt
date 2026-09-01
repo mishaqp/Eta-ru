@@ -30,6 +30,12 @@ sealed interface AppRoute : NavKey {
     data object Settings : AppRoute
 
     @Serializable
+    data object AssistantProfiles : AppRoute
+
+    @Serializable
+    data class AssistantProfileDetail(val profileId: String) : AppRoute
+
+    @Serializable
     data object AppearanceSettings : AppRoute
 
     @Serializable

@@ -68,6 +68,7 @@ internal class AgentLocalTools(
     private val memoryToolsEnabled: () -> Boolean = {
         runBlocking { AgentMemoryRepository.isEnabled() }
     },
+    private val skillsEnabled: () -> Boolean = { true },
     private val screenshotExcludedPackages: () -> Set<String> = { emptySet() },
     private val screenObservationProvider: (
         (AgentScreenObservationContract.Options) -> RootShellDeviceController.Observation
@@ -121,6 +122,7 @@ internal class AgentLocalTools(
             val args = JSONObject(toolCall.argumentsJson.ifBlank { "{}" })
             deviceToolPermissionError(toolCall.name)?.let { return@runCatching it }
             memoryToolPermissionError(toolCall.name)?.let { return@runCatching it }
+            skillToolPermissionError(toolCall.name)?.let { return@runCatching it }
             when (val decision = beforeToolExecution(toolCall.name)) {
                 ToolExecutionDecision.Allow -> Unit
                 is ToolExecutionDecision.Reject -> {
@@ -239,6 +241,14 @@ internal class AgentLocalTools(
         return AgentModelClient.ToolResult(
             content = errorResult("MEMORY_DISABLED", "记忆已在设置中关闭"),
             sensitive = true,
+        )
+    }
+
+    private fun skillToolPermissionError(toolName: String): AgentModelClient.ToolResult? {
+        if (toolName !in SKILL_TOOL_NAMES || skillsEnabled()) return null
+        return AgentModelClient.ToolResult(
+            content = errorResult("SKILLS_DISABLED", "Навыки отключены в профиле ассистента"),
+            sensitive = false,
         )
     }
 
@@ -1327,5 +1337,13 @@ internal class AgentLocalTools(
             DEVICE_DIRECT_TOOL_NAMES + DEVICE_SENSITIVE_READ_TOOL_NAMES +
                 DEVICE_SENSITIVE_ACTION_TOOL_NAMES
         val MEMORY_TOOL_NAMES = setOf("memory_get", "memory_write")
+        val SKILL_TOOL_NAMES = setOf(
+            "skills_list",
+            "skills_read",
+            "skills_read_resource",
+            "skills_list_curated",
+            "skills_inspect_github",
+            "skills_install_from_github",
+        )
     }
 }

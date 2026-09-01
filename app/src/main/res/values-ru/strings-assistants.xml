@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="route_assistant_profiles">Ассистенты</string>
+  <string name="route_assistant_profile">Ассистент</string>
+  <string name="assistant_profiles_settings_summary">Отдельные модели, инструкции, память и права для каждого ассистента</string>
+  <string name="assistant_profiles_summary">У каждого ассистента свои модель, инструкции, разрешения, расширения и история чатов.</string>
+  <string name="assistant_profile_create">Создать ассистента</string>
+  <string name="assistant_profile_active">Активен</string>
+  <string name="assistant_profile_activate">Использовать этого ассистента</string>
+  <string name="assistant_profile_section_general">Основные настройки</string>
+  <string name="assistant_profile_avatar">Аватар или символ</string>
+  <string name="assistant_profile_name">Имя ассистента</string>
+  <string name="assistant_profile_description">Краткое описание</string>
+  <string name="assistant_profile_section_model">Модель</string>
+  <string name="assistant_profile_model">Модель и поставщик</string>
+  <string name="assistant_profile_model_picker_summary">Выберите включённую модель. Поставщики и модели настраиваются на экране поставщиков моделей.</string>
+  <string name="assistant_profile_thinking">Размышления</string>
+  <string name="assistant_profile_section_prompt">Подсказки</string>
+  <string name="assistant_profile_prompt_summary">Эта инструкция отправляется только для данного ассистента. Оставьте пустой, чтобы использовать настройку поставщика.</string>
+  <string name="assistant_profile_system_prompt">Системная подсказка</string>
+  <string name="assistant_profile_section_extensions">Память и расширения</string>
+  <string name="assistant_profile_memory">Использовать память</string>
+  <string name="assistant_profile_skills">Включить навыки</string>
+  <string name="assistant_profile_skills_summary">Управление установленными навыками для этого ассистента</string>
+  <string name="assistant_profile_mcp">Включить MCP</string>
+  <string name="assistant_profile_mcp_summary">Управление MCP-серверами и инструментами для этого ассистента</string>
+  <string name="assistant_profile_section_tools">Локальные инструменты</string>
+  <string name="assistant_profile_browser_tools">Инструменты браузера</string>
+  <string name="assistant_profile_device_tools">Инструменты устройства</string>
+  <string name="assistant_profile_sensitive_read_tools">Чтение чувствительных данных устройства</string>
+  <string name="assistant_profile_sensitive_action_tools">Чувствительные действия с устройством</string>
+  <string name="assistant_profile_terminal_tools">Инструменты Root и Linux-терминала</string>
+  <string name="assistant_profile_section_request">Пользовательский запрос</string>
+  <string name="assistant_profile_request_headers">HTTP-заголовки в JSON</string>
+  <string name="assistant_profile_request_body">Дополнительное тело запроса в JSON</string>
+  <string name="assistant_profile_invalid_request">Некорректный пользовательский запрос</string>
+  <string name="assistant_profile_delete_title">Удалить ассистента?</string>
+  <string name="assistant_profile_delete_summary">Его чаты останутся в локальной базе, но перестанут отображаться, пока не будет восстановлен профиль с тем же ID.</string>
+</resources>

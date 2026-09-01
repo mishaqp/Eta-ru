@@ -47,6 +47,8 @@ internal object AgentModelClient {
                         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
                     deviceSensitiveActionTools =
                         Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
+                    skillsEnabled = runtime.skillsEnabled,
+                    mcpEnabled = runtime.mcpEnabled,
                     thinkingEnabled = effort.enablesReasoning,
                     reasoningEffort = effort,
                 )
@@ -73,6 +75,8 @@ internal object AgentModelClient {
                 Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_READ_TOOLS),
             deviceSensitiveActionTools =
                 Prefs.isEnabled(Prefs.Keys.AGENT_DEVICE_SENSITIVE_ACTION_TOOLS),
+            skillsEnabled = true,
+            mcpEnabled = true,
             thinkingEnabled = Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED),
             reasoningEffort = ReasoningEffort.fromLegacy(
                 Prefs.isEnabled(Prefs.Keys.AGENT_THINKING_ENABLED)
@@ -109,6 +113,7 @@ internal object AgentModelClient {
             deviceDirectTools = config.deviceDirectTools,
             deviceSensitiveReadTools = config.deviceSensitiveReadTools,
             deviceSensitiveActionTools = config.deviceSensitiveActionTools,
+            skillsEnabled = config.skillsEnabled,
             skillGitHubDiscovery = true,
             skillGitHubInstall = true,
             memoryTools = memoryContext.enabled,
@@ -211,6 +216,8 @@ internal object AgentModelClient {
         val deviceDirectTools: Boolean = true,
         val deviceSensitiveReadTools: Boolean = false,
         val deviceSensitiveActionTools: Boolean = false,
+        val skillsEnabled: Boolean = true,
+        val mcpEnabled: Boolean = true,
         val thinkingEnabled: Boolean = false,
         val reasoningEffort: ReasoningEffort? = null,
         val reasoningCapabilities: ModelReasoningCapabilities? = null,
