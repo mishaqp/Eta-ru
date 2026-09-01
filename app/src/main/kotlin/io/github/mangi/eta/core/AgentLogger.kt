@@ -19,14 +19,18 @@ internal object AndroidAgentLogger : AgentLogger {
     private val logThrottle = LogThrottle()
 
     override fun debug(message: () -> String) {
-        Log.d(ModuleConfig.TAG, message())
+        val value = message()
+        DiagnosticLogStore.append("debug", value)
+        Log.d(ModuleConfig.TAG, value)
     }
 
     override fun info(message: String) {
+        DiagnosticLogStore.append("info", message)
         Log.i(ModuleConfig.TAG, message)
     }
 
     override fun warn(message: String) {
+        DiagnosticLogStore.append("warn", message)
         Log.w(ModuleConfig.TAG, message)
     }
 
@@ -41,6 +45,7 @@ internal object AndroidAgentLogger : AgentLogger {
     }
 
     override fun error(message: String, throwable: Throwable?) {
+        DiagnosticLogStore.append("error", message, throwable)
         if (throwable == null) {
             Log.e(ModuleConfig.TAG, message)
         } else {
