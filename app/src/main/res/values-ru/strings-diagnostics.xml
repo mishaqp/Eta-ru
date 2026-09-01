@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnostics_title">Диагностика</string>
+    <string name="diagnostics_settings_summary">Создать безопасный отчёт для поиска ошибок</string>
+    <string name="diagnostics_info_title">Что попадёт в отчёт</string>
+    <string name="diagnostics_info_summary">События агента, ошибки, HTTP-коды, раунды и названия инструментов. Чаты, память, API-ключи и содержимое файлов исключены.</string>
+    <string name="diagnostics_actions">Действия</string>
+    <string name="diagnostics_share">Создать и отправить отчёт</string>
+    <string name="diagnostics_share_summary">Открыть меню Android и отправить TXT-файл</string>
+    <string name="diagnostics_share_title">Отправить диагностику Eta</string>
+    <string name="diagnostics_share_text">Диагностический отчёт Eta</string>
+    <string name="diagnostics_working">Создание отчёта…</string>
+    <string name="diagnostics_clear">Очистить локальные логи</string>
+    <string name="diagnostics_clear_summary">Удалить собранные диагностические события</string>
+    <string name="diagnostics_cleared">Локальные логи очищены</string>
+    <string name="diagnostics_failed">Не удалось создать отчёт: %1$s</string>
+</resources>
