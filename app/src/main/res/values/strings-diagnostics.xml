@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_settings_summary">Create a safe report for troubleshooting</string>
+    <string name="diagnostics_info_title">What will be included</string>
+    <string name="diagnostics_info_summary">Agent events, errors, HTTP codes, rounds and tool names. Chats, memory, API keys and file contents are excluded.</string>
+    <string name="diagnostics_actions">Actions</string>
+    <string name="diagnostics_share">Create and share report</string>
+    <string name="diagnostics_share_summary">Open Android sharing to send the TXT file</string>
+    <string name="diagnostics_share_title">Share Eta diagnostics</string>
+    <string name="diagnostics_share_text">Eta diagnostic report</string>
+    <string name="diagnostics_working">Creating report…</string>
+    <string name="diagnostics_clear">Clear local logs</string>
+    <string name="diagnostics_clear_summary">Delete the locally collected diagnostic events</string>
+    <string name="diagnostics_cleared">Local logs cleared</string>
+    <string name="diagnostics_failed">Could not create report: %1$s</string>
+</resources>
