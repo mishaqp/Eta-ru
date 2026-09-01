@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.model
 
 import io.github.mangi.eta.agent.runtime.AgentRunController
+import io.github.mangi.eta.core.AndroidAgentLogger
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -44,12 +45,17 @@ internal class AgentContextCompactor(
         if (updatedSummary.isBlank()) return currentView
         summary = updatedSummary
         compactedThrough = tailStart - 1
+        AndroidAgentLogger.info(
+            "context_compacted messages=${segment.length()}, summary_chars=${summary.length}, " +
+                "retained_messages=${source.length() - tailStart}"
+        )
         return buildView(source)
     }
 
     fun canRetryOverflow(throwable: Throwable): Boolean {
         if (overflowRetryUsed || !isContextOverflow(throwable)) return false
         overflowRetryUsed = true
+        AndroidAgentLogger.warn("context_overflow_retry scheduled")
         return true
     }
 
