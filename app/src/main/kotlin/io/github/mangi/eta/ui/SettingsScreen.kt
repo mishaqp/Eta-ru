@@ -269,6 +269,18 @@ internal fun SettingsScreen(
                         },
                         onClick = { onNavigate(AppRoute.McpServers) },
                     )
+                    PrefDivider()
+                    ArrowPreference(
+                        title = stringResource(R.string.diagnostics_title),
+                        summary = stringResource(R.string.diagnostics_settings_summary),
+                        startAction = {
+                            TintedIcon(
+                                icon = LucideR.drawable.lucide_ic_file_text,
+                                tint = PixelAmberYellow,
+                            )
+                        },
+                        onClick = { onNavigate(AppRoute.Diagnostics) },
+                    )
                 }
             }
 
